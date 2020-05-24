@@ -9,6 +9,8 @@ names.
 
 ## cat
 ## pwd
+Returns the current path.
+
 ## shuf
 ## tac
 ## time (ttime)
