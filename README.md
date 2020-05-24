@@ -11,6 +11,7 @@ names.
 ## pwd
 ## shuf
 ## tac
+## time (ttime)
 ## dos2unix
 ## unix2dos
 
