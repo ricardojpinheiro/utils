@@ -4,12 +4,13 @@ program pwd;
 * Little program, only shows you which directory you are.
 }
 
-type
-    TString = string[66];
+{$i d:types.inc}
+{$i d:dos.inc}
+{$i d:dos2err.inc}
 
 Var
     MSXIOResult: byte;
-    Saida: byte;
+    MSXDOSversion: TMSXDOSVersion;
 
 Function GetCurrentDrive: byte;
  Var drv :byte;
@@ -30,6 +31,7 @@ Var
     Buf: TPathBuffer;
     St: TString;
     i: byte;
+    
 Begin
     drv := Drive;
     Inline( $0E/$59/          {Ld c, getdir}
@@ -53,5 +55,13 @@ Begin
  End;
 
 begin
-    writeln(concat(chr(GetCurrentDrive + 65), ':\', GetCurrentDirectory(GetCurrentDrive)));
+    GetMSXDOSVersion (MSXDOSversion);
+
+    if (MSXDOSversion.nKernelMajor < 2) then
+    begin
+        writeln('MSX-DOS 1.x not supported.');
+        exit;
+    end
+    else 
+        writeln(concat(chr(GetCurrentDrive + 65), ':\', GetCurrentDirectory(GetCurrentDrive)));
 end.
