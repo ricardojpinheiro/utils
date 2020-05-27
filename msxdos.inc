@@ -8,6 +8,7 @@ Const
 	ctDelete               = $13;   { delete file                     }        
         ctOpen                 = $F;    { open file                       }
         ctRename               = $17;   { rename file                     }
+	ctFileSize             = $23;   { get file size (*)               }
 
 (* Execute a MSX BDOS function. *)
 Procedure MSXBDOS( Var regs : TRegs );

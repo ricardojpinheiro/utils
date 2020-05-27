@@ -8,6 +8,7 @@ Const
 	ctDelete               	        = $13;
 	ctCreate               	        = $16;
     ctRename               	        = $17;
+	ctFileSize                      = $23;    
     ctOpenFileHandle                = $43;
 	ctCreateFileHandle              = $44;
 	ctCloseFileHandle               = $45;
