@@ -11,7 +11,7 @@ program shuf;
 {$i d:fastwrit.inc}
 
 Const
-    TotalBufferSize = 2047;
+    TotalBufferSize = 1023;
     BufferSize = 511;
     MaxLines = 250;
 
@@ -28,15 +28,17 @@ Var
     BlockReadResult: byte;
     NewPosition, RandomLines, ValReturn: integer;
     SizeOfInputFile, EndOfFile: integer;
-    i, j, k, counter: integer;
+    PositionsInOutputString: integer;
+    i, j, k, l, counter: integer;
     Character: char;
     RepeatedLines, UsesOutputFileName, SeekResult: boolean;
     fEOF: boolean;
     Registers: TRegs;
     
     Buffer: Array[0..1, 0..TotalBufferSize] Of Byte;
-    LineLength: Array[0..MaxLines] of Integer;
+    BeginningOfLine: Array[0..MaxLines] of Integer;
     OutputString: TOutputString;
+    PrintString: string[255];
 
 (* Here we use MSX-DOS 2 to do the error handling. *)
 
@@ -56,27 +58,30 @@ end;
 (*  Reads a random line from a file. If UsesOutputFileName is true, then
     it will be send to a output file. *)
     
-procedure ReadLineFromFile (Line: integer; EndOfFile: integer; var OutputString: TOutputString);
+procedure ReadLineFromFile (Line: integer; var PositionsInOutputString: Integer; var OutputString: TOutputString);
 var
     TemporaryReal: real;
-    Beginning, Finish, InitialBlock, FinalBlock: integer;
-    j, k, l: integer;
+    Beginning, Finish, CurrentBlock, InitialBlock, FinalBlock: integer;
+    PositionsInTheBuffer: integer;
    
 begin
     TemporaryReal := 0.0;
 
 (*  Move seek pointer to the beginning of the file. *)
 
-    SeekResult := FileSeek( hInputFileName, 0, ctSeekSet, NewPosition );
+    SeekResult := FileSeek (hInputFileName, 0, ctSeekSet, NewPosition);
 
 (*  Several calculations to know which block is it. *)
 
-    for j := 0 to Line - 1 do
-        TemporaryReal := TemporaryReal + LineLength[j];
+    for i := 0 to Line - 1 do
+        TemporaryReal := TemporaryReal + BeginningOfLine[i];
     
-    Beginning := round(int(TemporaryReal));
+    Beginning := round(int(TemporaryReal)) - 1;
+    Finish := Beginning + BeginningOfLine[Line] - 2;
+    
+    if Line = 1 then Beginning := Beginning + 2;
+    
     InitialBlock := round(int(Beginning / (BufferSize + 1)));
-    Finish := Beginning + LineLength[Line] - 1;
     FinalBlock := Finish div (BufferSize + 1);
 
 (*  Move to the InitialBlock-th position. *)
@@ -96,11 +101,10 @@ begin
             ErrorCode(true);
 
         for j := 1 to BufferSize do
-        begin
-            if (Buffer[i,j] = ord(13)) then
-                Buffer[i,j] := ord(255);
-        end;
+            if (Buffer[i,j] = ord(13)) then Buffer[i,j] := ord(255);
     end;
+
+(*  Copy the broken occurrence from the 2nd buffer to the 1st. *)
     
     k := 0;
     repeat
@@ -110,56 +114,48 @@ begin
     until Character = chr(255);
     
     Buffer[0, BufferSize + k] := ord(255);
-
+    
+{
 for i := 0 to 0 do
 begin
     writeln('i: ', i, ' k: ', k, ' total: ', BufferSize + k);
     for j := BufferSize to BufferSize + k do
         write(chr(Buffer[1, j]));
 end;
-
-{
-    for j := 0 to Line - 1 do
-        TemporaryReal := TemporaryReal + LineLength[j];
-    
-    Beginning := round(int(TemporaryReal));
-    InitialBlock := round(int(Beginning / (BufferSize + 1)));
-    Finish := Beginning + LineLength[Line];
-    FinalBlock := Finish div (BufferSize + 1);
 }
-
-    writeln('Temp: ', TemporaryReal:2:0, ' Bloco inicial: ', InitialBlock, ' Bloco final: ', FinalBlock,
-     ' Linha: ', Line, ' Beginning: ', Beginning, ' Finish: ', Finish);
-     
-    i := 0;
-    j := Beginning;
-    k := 1;
-    l := (Beginning mod (BufferSize + 1)) - (Line - 1) + InitialBlock;
+    CurrentBlock := 0;
+    PositionsInTheBuffer := Beginning - 1;
+    PositionsInOutputString := 1;
+    l := Beginning mod (BufferSize + 1) - 1 + InitialBlock;
     fillchar(OutputString, sizeof(OutputString), ' ' );
-    
-    while (j < Finish - 2) do
+{
+    writeln(' InitialBlock: ', InitialBlock, ' FinalBlock: ', FinalBlock,
+     ' Linha: ', Line, ' Beginning: ', Beginning, ' Finish: ', Finish, ' l: ', l);
+}
+    while (PositionsInTheBuffer < Finish) do
     begin
-        OutputString[k] := chr(Buffer[i,l]);
+        OutputString[PositionsInOutputString] := chr(Buffer[CurrentBlock, l]);
         if (l = BufferSize) then
         begin
-            i := i + 1;
+            CurrentBlock := CurrentBlock + 1;
             l := 0;
         end;
 
-         if OutputString[k] = chr(255) then OutputString[k] := chr(13);
-
+         if OutputString[PositionsInOutputString] = chr(255) then 
+            OutputString[PositionsInOutputString] := chr(13);
 {
-        writeln('OutputString[',k,']=', OutputString[k], ' Buffer[', i, ',', l, ']=', chr(Buffer[i,l]), ' ');
+        writeln('OutputString[',PositionsInOutputString,']=', OutputString[PositionsInOutputString],
+        ' Buffer[', CurrentBlock, ',', l, ']=', chr(Buffer[CurrentBlock, l]), ' ');
 
-        write(chr(Buffer[i,l]));
+        write(chr(Buffer[CurrentBlock,l]));
 
-        write(OutputString[k]);
+        write(OutputString[PositionsInOutputString]);
 }        
-        j := j + 1;
-        k := k + 1;
+        PositionsInTheBuffer := PositionsInTheBuffer + 1;
+        PositionsInOutputString := PositionsInOutputString + 1;
         l := l + 1;
     end;
-    OutputString[0] := chr(length(OutputString));
+
 end;
 
 (*  Command help.*)
@@ -168,19 +164,20 @@ procedure ShufHelp;
 begin
     clrscr;
     fastwriteln(' Usage: shuf <file> <parameters>.');
-    fastwriteln(' Write a random permutation of the input');
-    fastwriteln(' lines to standard output.');
+    fastwriteln(' Write a random permutation of the ');
+    fastwriteln(' input lines to standard output.');
     writeln;
-    fastwriteln(' File: Text file from where we are getting');
-    fastwriteln(' lines.');
+    fastwriteln(' File: Text file from where we are ');
+    fastwriteln(' getting lines.');
     writeln;
     fastwriteln(' Parameters: ');
     fastwriteln(' /h - Display this help and exit.');
     fastwriteln(' /n<COUNT> - Output at most COUNT lines.');
-    fastwriteln(' /o<FILE>  - Write result to FILE instead');
-    fastwriteln(' of standard output.');
+    fastwriteln(' /o<FILE>  - Write result to FILE');
+    fastwriteln(' instead of standard output.');
     fastwriteln(' /r - Output lines can be repeated.');
-    fastwriteln(' /v - Output version information and exit.');
+    fastwriteln(' /v - Output version information and ');
+    fastwriteln(' exit.');
     writeln;
     halt;
 end;
@@ -267,13 +264,15 @@ begin
             for i := 0 to BufferSize do
                 if Buffer[1,i] <> 0 then counter := counter + 1;
 
-            i := 1;
-            while (i <= BufferSize) do
+            i := 0;
+            l := 2;
+            while (i < BufferSize) do
             begin
                 Character := chr(Buffer[1,i]);
+                if j > 1 then l := 0;
                 if Character = #13 then
                 begin
-                    LineLength[j] := k + 1;
+                    BeginningOfLine[j] := k + l;
                     j := j + 1;
                     k := 0;
                 end;
@@ -284,13 +283,14 @@ begin
             if counter = 1 then fEOF := true;
 
         end;
-        LineLength[0] := 0;
-        LineLength[1] := LineLength[1] + 2;
-        LineLength[EndOfFile] := LineLength[EndOfFile] - 1;
+        BeginningOfLine[0] := 0;
+        BeginningOfLine[1] := BeginningOfLine[1] + 1;
+
+        BeginningOfLine[EndOfFile] := BeginningOfLine[EndOfFile] - 1;
         EndOfFile := j - 1;
 {
         for i := 1 to EndOfFile do
-            writeln('Linha ',i,' termina na posicao ', LineLength[i]);
+            writeln('Linha ',i,' termina na posicao ', BeginningOfLine[i]);
 }
         for i := 2 to 4 do
         begin
@@ -325,23 +325,37 @@ begin
         end;
 
 (*  Show specific number of lines, defined by RandomLines. *)
+
+writeln('Inicio: ');
+readln(i);
+writeln('Fim: ');
+readln(j);
+
+for counter := i to j do
+begin
+    ReadLineFromFile (counter, PositionsInOutputString, OutputString);
 {
-    writeln('Inicio: ');
-    readln(i);
-    writeln('Fim: ');
-    readln(j);
-
-        for k := i to j do
-        begin
-            ReadLineFromFile (k, EndOfFile, OutputString);
-
-             for i := 1 to 80 do
-                write(OutputString[i]);
-
-        end;
+    OutputString[BeginningOfLine[counter] - 1] := chr(10);
+    OutputString[BeginningOfLine[counter]] := chr(13);
+}
+    j := 0;
+    fillchar(PrintString, sizeof(PrintString), ' ' );
+    for j := 0 to PositionsInOutputString do
+    begin
+{
+         writeln('OutputString[',j,']=', OutputString[j]);
+}
+        PrintString[j] := OutputString[j];
+    end;
+    PrintString[0] := chr(PositionsInOutputString);
+    writeln;
+    writeln;
+    writeln;
+    writeln('PrintString: ' , PrintString);
+end;
 
 exit;
-}
+
 {
          If RandomLines > 0 then
             for i := 1 to RandomLines do
@@ -349,21 +363,13 @@ exit;
                 repeat
                     k := random(EndOfFile);
                 until k <> 0; 
-                ReadLineFromFile (k, EndOfFile, OutputString);
-                OutputString[LineLength[k] - 1] := chr(10);
-                OutputString[LineLength[k]] := chr(13);
-                for j := 1 to LineLength[k] do
+                ReadLineFromFile (k, PositionsInOutputString , OutputString);
+                OutputString[BeginningOfLine[k] - 1] := chr(10);
+                OutputString[BeginningOfLine[k]] := chr(13);
+                for j := 1 to BeginningOfLine[k] do
                     write(OutputString[j]);
             end;
 }
-            for k :=13 to 14 do
-            begin
-                ReadLineFromFile (k, EndOfFile, OutputString);
-                OutputString[LineLength[k] - 1] := chr(10);
-                OutputString[LineLength[k]] := chr(13);
-                for j := 1 to LineLength[k] do
-                    write(OutputString[j]);
-            end;
 
 (*  Closing file. *)
         
