@@ -17,7 +17,7 @@ Const
 
 Type
     TParameterVector = array [1..4] of TString;
-    TOutputString = array[1..255] of char;
+    TOutputString = array[0..255] of char;
 
 Var
     MSXDOSversion: TMSXDOSVersion;
@@ -34,7 +34,7 @@ Var
     fEOF: boolean;
     Registers: TRegs;
     
-    Buffer: Array[0..1, 0..TotalBufferSize] Of Byte;
+    Buffer: Array[1..2, 0..TotalBufferSize] Of Byte;
     LineLength: Array[0..MaxLines] of Integer;
     OutputString: TOutputString;
 
@@ -74,10 +74,15 @@ begin
     for j := 0 to Line - 1 do
         TemporaryReal := TemporaryReal + LineLength[j];
     
+    
+    
     Beginning := round(int(TemporaryReal));
     InitialBlock := round(int(Beginning / (BufferSize + 1)));
-    Finish := Beginning + LineLength[Line] - 1;
+    Finish := Beginning + LineLength[Line];
     FinalBlock := Finish div (BufferSize + 1);
+
+    writeln('Temp: ', TemporaryReal:2:0, ' Bloco inicial: ', InitialBlock, ' Bloco final: ', FinalBlock,
+     ' Linha: ', Line, ' Beginning: ', Beginning, ' Finish: ', Finish);
 
 (*  Move to the InitialBlock-th position. *)
 
@@ -87,7 +92,7 @@ begin
 
 (*  Read the k and k+1 blocks. *)
 
-    for i := 0 to 1 do
+    for i := 1 to 2 do
     begin
         fillchar (Buffer[i], TotalBufferSize, 0);
 
@@ -96,29 +101,22 @@ begin
             ErrorCode(true);
 
         for j := 1 to BufferSize do
-        begin
-            if (Buffer[i,j] = ord(13)) then
+            if (Buffer[i,j] = ord(10)) or (Buffer[i,j] = ord(13)) then
                 Buffer[i,j] := ord(255);
-        end;
+
     end;
     
-    k := 0;
-    repeat
-        Character := chr(Buffer[1, k]);
-        Buffer[0, BufferSize + k] := ord(Character);
-        k := k + 1;
-    until Character = chr(255);
-    
-    Buffer[0, BufferSize + k] := ord(255);
-
-for i := 0 to 0 do
-begin
-    writeln('i: ', i, ' k: ', k, ' total: ', BufferSize + k);
-    for j := BufferSize to BufferSize + k do
-        write(chr(Buffer[1, j]));
-end;
-
+    fillchar(OutputString, sizeof(OutputString), ' ' );
 {
+    for i := 1 to 2 do
+    begin
+        writeln('i: ', i);
+        for j := 0 to 511 do
+            write(chr(Buffer[i,j]));
+        writeln;
+    end;
+    
+exit;
     for j := 0 to Line - 1 do
         TemporaryReal := TemporaryReal + LineLength[j];
     
@@ -127,30 +125,22 @@ end;
     Finish := Beginning + LineLength[Line];
     FinalBlock := Finish div (BufferSize + 1);
 }
-
-    writeln('Temp: ', TemporaryReal:2:0, ' Bloco inicial: ', InitialBlock, ' Bloco final: ', FinalBlock,
-     ' Linha: ', Line, ' Beginning: ', Beginning, ' Finish: ', Finish);
-     
-    i := 0;
+    i := 1;
     j := Beginning;
     k := 1;
-    l := (Beginning mod (BufferSize + 1)) - (Line - 1) + InitialBlock;
-    fillchar(OutputString, sizeof(OutputString), ' ' );
+    l := (Beginning mod (BufferSize + 1)) - (Line - 1);
     
     while (j < Finish - 2) do
     begin
         OutputString[k] := chr(Buffer[i,l]);
-        if (l = BufferSize) then
+        if (l = BufferSize - 1) then
         begin
             i := i + 1;
             l := 0;
         end;
 
-         if OutputString[k] = chr(255) then OutputString[k] := chr(13);
-
-{
         writeln('OutputString[',k,']=', OutputString[k], ' Buffer[', i, ',', l, ']=', chr(Buffer[i,l]), ' ');
-
+{
         write(chr(Buffer[i,l]));
 
         write(OutputString[k]);
@@ -159,7 +149,6 @@ end;
         k := k + 1;
         l := l + 1;
     end;
-    OutputString[0] := chr(length(OutputString));
 end;
 
 (*  Command help.*)
@@ -168,17 +157,14 @@ procedure ShufHelp;
 begin
     clrscr;
     fastwriteln(' Usage: shuf <file> <parameters>.');
-    fastwriteln(' Write a random permutation of the input');
-    fastwriteln(' lines to standard output.');
+    fastwriteln(' Write a random permutation of the input lines to standard output.');
     writeln;
-    fastwriteln(' File: Text file from where we are getting');
-    fastwriteln(' lines.');
+    fastwriteln(' File: Text file from where we are getting lines.');
     writeln;
     fastwriteln(' Parameters: ');
     fastwriteln(' /h - Display this help and exit.');
     fastwriteln(' /n<COUNT> - Output at most COUNT lines.');
-    fastwriteln(' /o<FILE>  - Write result to FILE instead');
-    fastwriteln(' of standard output.');
+    fastwriteln(' /o<FILE>  - Write result to FILE instead of standard output.');
     fastwriteln(' /r - Output lines can be repeated.');
     fastwriteln(' /v - Output version information and exit.');
     writeln;
@@ -288,10 +274,12 @@ begin
         LineLength[1] := LineLength[1] + 2;
         LineLength[EndOfFile] := LineLength[EndOfFile] - 1;
         EndOfFile := j - 1;
-{
+
         for i := 1 to EndOfFile do
             writeln('Linha ',i,' termina na posicao ', LineLength[i]);
-}
+
+exit;
+
         for i := 2 to 4 do
         begin
             Temporary := ParameterVector[i];
@@ -325,7 +313,7 @@ begin
         end;
 
 (*  Show specific number of lines, defined by RandomLines. *)
-{
+
     writeln('Inicio: ');
     readln(i);
     writeln('Fim: ');
@@ -334,35 +322,26 @@ begin
         for k := i to j do
         begin
             ReadLineFromFile (k, EndOfFile, OutputString);
-
+{
              for i := 1 to 80 do
                 write(OutputString[i]);
-
+}
         end;
 
 exit;
-}
-{
-         If RandomLines > 0 then
+
+        If RandomLines > 0 then
             for i := 1 to RandomLines do
             begin
                 repeat
                     k := random(EndOfFile);
                 until k <> 0; 
+                writeln('Linha: ', k);
                 ReadLineFromFile (k, EndOfFile, OutputString);
-                OutputString[LineLength[k] - 1] := chr(10);
-                OutputString[LineLength[k]] := chr(13);
-                for j := 1 to LineLength[k] do
+                 for j := 1 to SizeOf(OutputString) do
                     write(OutputString[j]);
-            end;
-}
-            for k :=13 to 14 do
-            begin
-                ReadLineFromFile (k, EndOfFile, OutputString);
-                OutputString[LineLength[k] - 1] := chr(10);
-                OutputString[LineLength[k]] := chr(13);
-                for j := 1 to LineLength[k] do
-                    write(OutputString[j]);
+                writeln;
+
             end;
 
 (*  Closing file. *)
