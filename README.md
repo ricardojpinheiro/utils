@@ -13,9 +13,8 @@ Returns the current path.
 
 ## shuf
 Shuffles the lines fron a given file. I decided to do it first, because of
-the challenge, but instead I can use most of the adquired knowledge to other
-utilities. Today (2020-05-27) I can read a text file and find all the $0A
-(end-of-line) markings.
+the challenge and I can use most of the adquired knowledge to other
+utilities. 
 
 ## tac
 ## time (ttime)
