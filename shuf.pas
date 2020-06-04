@@ -1,6 +1,7 @@
 program shuf;
 {
 * Shuffles lines from a given file.
+* Compile it using TP3 - more free memory.
 * }
 
 {$i d:types.inc}
@@ -11,32 +12,33 @@ program shuf;
 {$i d:fastwrit.inc}
 
 Const
-    TotalBufferSize = 1023;
+    TotalBufferSize = 767;
     BufferSize = 511;
-    MaxLines = 250;
+    MaxLines = 8635;
 
 Type
-    TParameterVector = array [1..4] of TString;
+    TParameterVector = array [1..5] of string[80];
     TOutputString = array[1..255] of char;
 
 Var
     MSXDOSversion: TMSXDOSVersion;
     ParameterVector: TParameterVector;
-    InputFileName, OutputFileName, Temporary: TFileName;
+    InputFileName, OutputFileName: TFileName;
+    Temporary: string[80];
     TemporaryNumber: string[5];
-    hInputFileName, hOutputFileName, nDrive: byte;
-    BlockReadResult: byte;
+    hInputFileName: byte;
+    hOutputFileName: text;
+    nDrive, BlockReadResult: byte;
     NewPosition, RandomLines, ValReturn: integer;
-    SizeOfInputFile, EndOfFile: integer;
+    EndOfFile: integer;
     PositionsInOutputString: integer;
     i, j, k, l, counter: integer;
     Character: char;
-    RepeatedLines, UsesOutputFileName, SeekResult: boolean;
-    fEOF: boolean;
+    NumberedLines, RepeatedLines, UsesOutputFileName, SeekResult, fEOF: boolean;
     Registers: TRegs;
-    
+
     Buffer: Array[0..1, 0..TotalBufferSize] Of Byte;
-    BeginningOfLine: Array[0..MaxLines] of Integer;
+    BeginningOfLine, RandomNumbers: Array[0..MaxLines] of Integer;
     OutputString: TOutputString;
     PrintString: TString;
 
@@ -55,14 +57,14 @@ begin
         Exit;
 end;
 
-(*  Reads a random line from a file. If UsesOutputFileName is true, then
+(*  Reads a random line from a file. if UsesOutputFileName is true, then
     it will be send to a output file. *)
     
 procedure ReadLineFromFile (Line: integer; var PositionsInOutputString: Integer; var OutputString: TOutputString);
 var
     TemporaryReal: real;
     Beginning, Finish, CurrentBlock, InitialBlock, FinalBlock: integer;
-    PositionsInTheBuffer: integer;
+    PositionsInTheBuffer, i, j: integer;
    
 begin
     TemporaryReal := 0.0;
@@ -87,7 +89,7 @@ begin
 (*  Move to the InitialBlock-th position. *)
 
     for j := 1 to InitialBlock do
-        If (not FileSeek (hInputFileName, BufferSize, ctSeekCur, NewPosition)) then
+        if (not FileSeek (hInputFileName, BufferSize, ctSeekCur, NewPosition)) then
             ErrorCode(true);
 
 (*  Read the k and k+1 blocks. *)
@@ -115,23 +117,12 @@ begin
     
     Buffer[0, BufferSize + k] := ord(255);
     
-{
-for i := 0 to 0 do
-begin
-    writeln('i: ', i, ' k: ', k, ' total: ', BufferSize + k);
-    for j := BufferSize to BufferSize + k do
-        write(chr(Buffer[1, j]));
-end;
-}
     CurrentBlock := 0;
     PositionsInTheBuffer := Beginning - 1;
     PositionsInOutputString := 1;
     l := Beginning mod (BufferSize + 1) - 1 + InitialBlock;
     fillchar(OutputString, sizeof(OutputString), ' ' );
-{
-    writeln(' InitialBlock: ', InitialBlock, ' FinalBlock: ', FinalBlock,
-     ' Linha: ', Line, ' Beginning: ', Beginning, ' Finish: ', Finish, ' l: ', l);
-}
+
     while (PositionsInTheBuffer < Finish) do
     begin
         OutputString[PositionsInOutputString] := chr(Buffer[CurrentBlock, l]);
@@ -143,32 +134,11 @@ end;
 
          if OutputString[PositionsInOutputString] = chr(255) then 
             OutputString[PositionsInOutputString] := chr(13);
-{
-        writeln('OutputString[',PositionsInOutputString,']=', OutputString[PositionsInOutputString],
-        ' Buffer[', CurrentBlock, ',', l, ']=', chr(Buffer[CurrentBlock, l]), ' ');
 
-        write(chr(Buffer[CurrentBlock,l]));
-
-        write(OutputString[PositionsInOutputString]);
-}        
         PositionsInTheBuffer := PositionsInTheBuffer + 1;
         PositionsInOutputString := PositionsInOutputString + 1;
         l := l + 1;
     end;
-end;
-
-procedure WriteLineToFile (PrintString: TString; PositionsInOutputString: integer);
-var
-    BlockWriteResult: integer;
-    OutputString: array[1..255] of byte;
-    
-begin
-    fillchar(OutputString, sizeof(OutputString), ' ' );
-    
-    for i := 1 to PositionsInOutputString do
-        OutputString[i] := ord(PrintString[i]);
-    
-    BlockWriteResult := FileBlockWrite (hOutputFileName, Buffer, sizeof(OutputString));
 end;
 
 (*  Command help.*)
@@ -185,6 +155,7 @@ begin
     writeln;
     fastwriteln(' Parameters: ');
     fastwriteln(' /h - Display this help and exit.');
+    fastwriteln(' /l - Number all output lines.');
     fastwriteln(' /n<COUNT> - Output at most COUNT lines.');
     fastwriteln(' /o<FILE>  - Write result to FILE');
     fastwriteln(' instead of standard output.');
@@ -200,7 +171,7 @@ end;
 procedure ShufVersion;
 begin
     clrscr;
-    fastwriteln('shuf version 0.7'); 
+    fastwriteln('shuf version 1.0'); 
     fastwriteln('Copyright (c) 2020 Brazilian MSX Crew.');
     fastwriteln('Some rights reserved.');
     writeln;
@@ -220,20 +191,24 @@ begin
     nDrive := 0;
     NewPosition := 0;
     RandomLines := 0;
+    UsesOutputFileName := false;
     fEOF := false;
+    RepeatedLines := false;
+    NumberedLines := false;
+    Character := ' ';
     fillchar(InputFileName, sizeof(InputFileName), ' ' );
     fillchar(OutputFileName, sizeof(OutputFileName), ' ' );
     fillchar(TemporaryNumber, sizeof(TemporaryNumber), ' ' );
     randomize;
 
-(*  If are we not running in a MSX-DOS 2 machine, exits. 
+(*  if are we not running in a MSX-DOS 2 machine, exits. 
 *   Else... Runs the program. *)
 
     GetMSXDOSVersion (MSXDOSversion);
 
     if (MSXDOSversion.nKernelMajor < 2) then
     begin
-        writeln('MSX-DOS 1.x not supported.');
+        fastwriteln('MSX-DOS 1.x not supported.');
         halt;
     end
     else 
@@ -246,12 +221,45 @@ begin
         fillchar(ParameterVector, sizeof(ParameterVector), ' ' );
 
 (*  Read parameters, and upcase them. *)
-        for i := 1 to 4 do
+        for i := 1 to paramcount do
         begin
             Temporary := paramstr(i);
             for j := 1 to length(Temporary) do
                 Temporary[j] := upcase(Temporary[j]);
             ParameterVector[i] := Temporary;
+        end;
+        
+        if paramcount > 0 then
+        begin
+            for i := 1 to paramcount do
+            begin
+                Temporary := ParameterVector[i];
+                Character := Temporary[2];
+                if Temporary[1] = '/' then
+                begin
+                    delete(Temporary, 1, 2);
+
+(*  Parameter /n<count>. Save it into a integer variable. *)
+(*  Parameter /o<file>. Save it into a string variable. *)
+(*  Parameter /r. Save it into a boolean variable. *)
+
+                    case Character of
+                        'H': ShufHelp;
+                        'L': NumberedLines := true;
+                        'N': begin
+                                TemporaryNumber := copy (Temporary, 1, length(Temporary));
+                                Val(TemporaryNumber, RandomLines, ValReturn);
+                            end;
+                        'O': begin
+                                OutputFileName := copy (Temporary, 1, length(Temporary));
+                                UsesOutputFileName := true;
+                            end;
+                        'R': RepeatedLines := true;
+                        'V': ShufVersion;
+                        else    ShufHelp;
+                    end;
+                end;
+            end;
         end;
 
 (*  The first parameter should be the file (or the standard input). *)
@@ -260,7 +268,7 @@ begin
 (*  Open file *)
         hInputFileName := FileOpen (InputFileName, 'r');
 
-(*  If there is any problem regarding the opening process, show the error code. *)
+(*  if there is any problem regarding the opening process, show the error code. *)
         if (hInputFileName in [ctInvalidFileHandle, ctInvalidOpenMode]) then ErrorCode (true);
 
 (*  Get file information. *)
@@ -304,63 +312,59 @@ begin
         BeginningOfLine[EndOfFile] := BeginningOfLine[EndOfFile] - 1;
         EndOfFile := j - 1;
 
-        for i := 2 to 4 do
+(*  if OutputFileName has something, then we should open a second file for output. *)
+
+        if UsesOutputFileName = true then
         begin
-            Temporary := ParameterVector[i];
-            Character := Temporary[2];
-            delete(Temporary, 1, 2);
-
-(*  Parameter /n<count>. Save it into a integer variable. *)
-(*  Parameter /o<file>. Save it into a string variable. *)
-(*  Parameter /r. Save it into a boolean variable. *)
-
-            case Character of
-                'H': ShufHelp;
-                'N': begin
-                        TemporaryNumber := copy (Temporary, 1, length(Temporary));
-                        Val(TemporaryNumber, RandomLines, ValReturn);
-                     end;
-                'O': OutputFileName := copy (Temporary, 1, length(Temporary));
-                'R': RepeatedLines := true;
-                'V': ShufVersion;
-            end;
-        end;
-
-(*  If OutputFileName has something, then we should open a second file for
-*   output. *)
-
-        If OutputFileName <> ' ' then
-        begin
-            hOutputFileName := FileOpen (OutputFileName, 'w+');
-
-(*  If there is any problem regarding the opening process, show the error code. *)
-            if (hOutputFileName in [ctInvalidFileHandle, ctInvalidOpenMode]) then ErrorCode (true);
+            assign(hOutputFileName, OutputFileName);
+            rewrite(hOutputFileName);
         end;
 
 (*  Show specific number of lines, defined by RandomLines. *)
 
         fillchar(PrintString, sizeof(PrintString), ' ' );
-        If RandomLines > 0 then
+        if RandomLines > 0 then
+
+(*  Here the program generates all random numbers and test if they are identical. Or not. *)
+
+            for i := 1 to RandomLines do
+                RandomNumbers[i] := random(EndOfFile) + 1;
+
+            if (not RepeatedLines) then
+                for i := 1 to RandomLines do
+                begin
+                    for j := i + 1 to RandomLines do
+                        if RandomNumbers[i] = RandomNumbers[j] then 
+                            RandomNumbers[i] := random(EndOfFile) + 1;
+                end;
+            
+(*  Here is where the program prints the lines. *)
+
             for i := 1 to RandomLines do
             begin
-                repeat
-                    k := random(EndOfFile);
-                until k <> 0; 
-                ReadLineFromFile (k, PositionsInOutputString , OutputString);
+                fillchar(PrintString, sizeof(PrintString), ' ' );
+                fillchar(OutputString, sizeof(OutputString), ' ' );
+                ReadLineFromFile (RandomNumbers[i], PositionsInOutputString , OutputString);
                 for j := 1 to PositionsInOutputString do
                     PrintString[j] := OutputString[j];
                 PrintString[0] := chr(PositionsInOutputString);
-                insert(' ', PrintString, 1);
-                If OutputFileName <> ' ' then
-                    WriteLineToFile (PrintString, PositionsInOutputString)
+                
+                if NumberedLines = false then
+                    insert(' ', PrintString, 1)
                 else
-                    writeln(PrintString);                     
+                begin
+                    TemporaryNumber := ' ';
+                    str(RandomNumbers[i], TemporaryNumber);
+                    Temporary := concat(' Line ', TemporaryNumber, ': ');
+                    insert(Temporary, PrintString, 1);
+                end;
+                if UsesOutputFileName = true then writeln(hOutputFileName, PrintString)
+                else writeln(PrintString);
             end;
 
-(*  Closing file. *)
-        
+(*  Close files. *)
+
+        if UsesOutputFileName = true then close(hOutputFileName);
         if (not FileClose(hInputFileName)) then ErrorCode(true);
-        If OutputFileName <> ' ' then
-            if (not FileClose(hOutputFileName)) then ErrorCode(true);
     end;
 end.
