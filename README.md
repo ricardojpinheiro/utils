@@ -24,18 +24,21 @@ utilities.
 ## cat
 ## tac
 ## head
-Prints the first n lines from a given file. If you doesn't use any
+Prints the first n lines (or n bytes) from a given file. If you doesn't use any
 parameters, it will print the first ten lines.
 
 ## tail
+Prints the last n lines (or n bytes) from a given file. If you doesn't use any
+parameters, it will print the last ten lines.
+
 ## touch
 ## wc
 ## dos2unix
 ## unix2dos
 
 # TODO
-All of them demands optimization, in order to use bigger files, in a quicker
-way. So, I'll try this in the future. 
+All of them demands optimization, in order to use bigger files in a faster
+way. I'll try it in the future. 
 
 # Version notes.
 (c) 2020 Brazilian MSX Crew. Some rights reserved, but it's released due to
