@@ -22,6 +22,8 @@ utilities.
 
 ## less
 ## cat
+Sends a file to the standart output.
+
 ## tac
 ## head
 Prints the first n lines (or n bytes) from a given file. If you doesn't use any
