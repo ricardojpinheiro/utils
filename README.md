@@ -33,6 +33,9 @@ parameters, it will print the last ten lines.
 
 ## touch
 ## wc
+Counts how many bytes, characters, words and lines from a given file. If you
+doesn't use any parameters, it will print bytes, words and lines.
+
 ## dos2unix
 ## unix2dos
 
