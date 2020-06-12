@@ -27,6 +27,9 @@ Sends a file to the standard output.
 ## tac
 Sends a file in reverse order to the standard output.
 
+## rev
+Reverse lines characterwise.
+
 ## head
 Prints the first n lines (or n bytes) from a given file. If you doesn't use any
 parameters, it will print the first ten lines.
