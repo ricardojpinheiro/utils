@@ -14,15 +14,15 @@ program grep;
 Const
     TotalBufferSize = 767;
     BufferSize = 511;
-    MaxLines = 100;
+    MaxLines = 17000;
+    b = 251;
 
 Type
-    TParameterVector = array [1..7] of string[80];
     TOutputString = array[1..255] of char;
+    TFourStates = (After, Before, Middle, Nothing);
 
 Var
     MSXDOSversion: TMSXDOSVersion;
-    ParameterVector: TParameterVector;
     InputFileName: TFileName;
     Temporary: string[80];
     TemporaryNumber: string[5];
@@ -30,12 +30,13 @@ Var
     nDrive, BlockReadResult: byte;
     NewPosition, RandomLines, ValReturn: integer;
     EndOfFile: integer;
-    Result, PositionsInOutputString: integer;
-    i, j, k, l, counter, MatchLines: integer;
+    Position, PositionsInOutputString: integer;
+    i, j, k, l, counter, MatchLines, Lines: integer;
     Character, TemporaryChar: char;
     SeekResult, fEOF, Count, Found, Ignore, LineNumber, Reverse: boolean;
     Registers: TRegs;
-
+    FourStates: TFourStates;
+    
     Buffer: Array[0..1, 0..TotalBufferSize] Of Byte;
     BeginningOfLine: Array[0..MaxLines] of Integer;
     OutputString: TOutputString;
@@ -52,8 +53,7 @@ begin
     ErrorCodeNumber := GetLastErrorCode;
     GetErrorMessage (ErrorCodeNumber, ErrorMessage);
     WriteLn (ErrorMessage);
-    if ExitsOrNot = true then
-        Exit;
+    if ExitsOrNot = true then exit;
 end;
 
 (*  Reads a random line from a file. if UsesOutputFileName is true, then
@@ -151,16 +151,16 @@ begin
     fastwriteln('Pattern: Text to be found.');
     fastwriteln('File: Text file.');
     fastwriteln('Parameters: ');
-        fastwriteln('/a<X> - Print X lines of trailing');
-        fastwriteln('context after matching lines.');
-        fastwriteln('/b<X> - Print X lines of trailing');
-        fastwriteln('context before matching lines.');
-        fastwriteln('/c<X> - Print X lines of output');
-        fastwriteln('context.');
+    fastwriteln('/a<X> - Print X lines of trailing');
+    fastwriteln('context after matching lines.');
+    fastwriteln('/b<X> - Print X lines of trailing');
+    fastwriteln('context before matching lines.');
+    fastwriteln('/c<X> - Print X lines of output');
+    fastwriteln('context.');
     fastwriteln('/h - Display this help & exit.');
     fastwriteln('/i - Ignore case distinctions.');
-        fastwriteln('/m<X> - Stop reading a file after X');
-        fastwriteln('matching lines.');
+    fastwriteln('/m<X> - Stop reading a file after X');
+    fastwriteln('matching lines.');
     fastwriteln('/n - Prefix each line of output with');
     fastwriteln('its line number.');
     fastwriteln('/o - Print a count of matching lines');
@@ -190,23 +190,22 @@ begin
     halt;
 end;
 
-function RabinKarp (Pattern: TFileName; Text: TFileName): integer;
-const
-    b = 251;
+function RabinKarp (Pattern: TString; Text: TString): integer;
 var
     HashPattern, HashText, Bm, j, LengthPattern, LengthText, Result: integer;
-    Found: Boolean;
+    Found : Boolean;
+  
 begin
 
 (*  Initializing variables. *)
 
     Found := False;
     Result := 0;
-    LengthPattern := length (Pattern);
+    LengthPattern := length(Pattern);
     HashPattern := 0;
     HashText := 0;
     Bm := 1;
-    LengthText := length (Text);
+    LengthText := length(Text);
 
 (*  If there isn't any patterns to search, exit. *)
 
@@ -220,12 +219,12 @@ begin
 
 (*  Calculating Hash *)
 
-    for j := 1 to LengthPattern do
-    begin
-        Bm := Bm * b;
-        HashPattern := round(int(HashPattern * b + ord(Pattern[j])));
-        HashText := round(int(HashText * b + ord(Text[j])));
-    end;
+        for j := 1 to LengthPattern do
+        begin
+            Bm := Bm * b;
+            HashPattern := round(int(HashPattern * b + ord(Pattern[j])));
+            HashText := round(int(HashText * b + ord(Text[j])));
+        end;
 
     j := LengthPattern;
   
@@ -250,15 +249,52 @@ begin
 end;
 
 procedure PrintGrep;
-begin
-    if Count = false then
+var
+    k: integer;
+    
+    procedure ReadLineFile (l: integer);
+    begin
+        fillchar(OutputString, sizeof(OutputString), ' ' );
+        ReadLineFromFile (l, PositionsInOutputString , OutputString);
+    end;
+
+    procedure WriteGrep (l: integer);
     begin
         write(chr(32));
-        if LineNumber = true then write(i, ':');
+        if LineNumber = true then write(l, ':');
         for j := 1 to PositionsInOutputString do
             write(OutputString[j]);
         writeln;
         counter := counter + 1;
+    end;
+
+begin
+    if Count = false then
+    begin
+        case FourStates of
+            After: begin
+                        for k := i to i + Lines do
+                        begin
+                            ReadLineFile(k);
+                            WriteGrep(k);
+                        end;
+                    end;
+            Before: begin
+                        for k := i - Lines to i do
+                        begin
+                            ReadLineFile(k);
+                            WriteGrep(k);
+                        end;
+                    end;
+            Middle: begin
+                        for k := (i - Lines) to (i + Lines) do
+                        begin
+                            ReadLineFile(k);
+                            WriteGrep(k);
+                        end;
+                    end;
+            Nothing: WriteGrep(i);
+        end;
     end;
 end;
 
@@ -275,8 +311,9 @@ begin
     Ignore := false;
     LineNumber := false;
     Reverse := false;
-    Result := 0;
+    Position := 0;
     MatchLines := maxint;
+    FourStates := Nothing;
     fillchar(InputFileName, sizeof(InputFileName), ' ' );
 
 (*  if are we not running in a MSX-DOS 2 machine, exits. 
@@ -295,8 +332,11 @@ begin
 (* No parameters, command prints the help. *)
         if paramcount = 0 then GrepHelp;
 
-(*  Clear variables. *)
-        fillchar(ParameterVector, sizeof(ParameterVector), ' ' );
+(*  The first parameter should be the pattern. *)
+        Pattern := paramstr(1);
+
+(*  The second parameter should be the file (or the standard input). *)
+        InputFileName := paramstr(2);
 
 (*  Read parameters, and upcase them. *)
         for i := 1 to paramcount do
@@ -304,46 +344,28 @@ begin
             Temporary := paramstr(i);
             for j := 1 to length(Temporary) do
                 Temporary[j] := upcase(Temporary[j]);
-            ParameterVector[i] := Temporary;
-        end;
-        
-        if paramcount > 0 then
-        begin
-            for i := 1 to paramcount do
+            Character := Temporary[2];
+            if Temporary[1] = '/' then
             begin
-                Temporary := ParameterVector[i];
-                Character := Temporary[2];
-                if Temporary[1] = '/' then
-                begin
-                    delete(Temporary, 1, 2);
+                delete(Temporary, 1, 2);
 
 (*  Parameters. *)
 
-                    case Character of
-                        'A': begin
-                            end;
-                        'B': begin
-                            end;
-                        'C': begin
-                            end;
-                        'H': GrepHelp;
-                        'I': Ignore := true;
-                        'M': Val(Temporary, MatchLines, ValReturn);
-                        'N': LineNumber := true;
-                        'O': Count := true;
-                        'R': Reverse := true;                        
-                        'V': GrepVersion;
-                    end;
+                case Character of
+                    'A': FourStates := After;
+                    'B': FourStates := Before;
+                    'C': FourStates := Middle;
+                    'H': GrepHelp;
+                    'I': Ignore := true;
+                    'M': Val(Temporary, MatchLines, ValReturn);
+                    'N': LineNumber := true;
+                    'O': Count := true;
+                    'R': Reverse := true;                        
+                    'V': GrepVersion;
                 end;
+                if FourStates <> Nothing then Val(Temporary, Lines, ValReturn);
             end;
         end;
-
-(*  The first parameter should be the pattern. *)
-        Pattern := ParameterVector[1];
-
-(*  The second parameter should be the file (or the standard input). *)
-        
-        InputFileName := ParameterVector[2];
 
 (*  Open file *)
         hInputFileName := FileOpen (InputFileName, 'r');
@@ -399,7 +421,7 @@ begin
 
         i := 1;
         counter := 0;
-        while (i <= EndOfFile) or (counter <= MatchLines) do
+        while (i <= EndOfFile) do
         begin
             fillchar(OutputString, sizeof(OutputString), ' ' );
             ReadLineFromFile (i, PositionsInOutputString , OutputString);
@@ -408,12 +430,17 @@ begin
                 if Ignore = true then PrintString[j] := upcase(OutputString[j])
                 else PrintString[j] := OutputString[j];
             end;
-            Result := RabinKarp(Pattern, PrintString);
+            insert(chr(32), PrintString, 1);
+            PrintString[0] := chr(PositionsInOutputString + 1);
+            Position := RabinKarp(Pattern, PrintString);
             if Reverse = false then 
-                if Result <> 0 then PrintGrep;
+                if Position <> 0 then PrintGrep;
             if Reverse = true then 
-                if Result = 0 then PrintGrep;
+                if Position = 0 then PrintGrep;
             i := i + 1;
+            if MatchLines < maxint then
+                if counter = MatchLines then
+                    i := EndOfFile + 1;
         end;
 
         if Count = true then writeln(counter);
