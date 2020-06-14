@@ -230,9 +230,8 @@ begin
                 begin
                     delete(Temporary, 1, 2);
 
-(*  Parameter /n<count>. Save it into a integer variable. *)
-(*  Parameter /o<file>. Save it into a string variable. *)
-(*  Parameter /r. Save it into a boolean variable. *)
+(*  Parameter /c<NUM>. Save it into a integer variable. *)
+(*  Parameter /n<NUM>. Save it into a integer variable. *)
 
                     case Character of
                         'H': HeadHelp;

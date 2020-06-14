@@ -142,20 +142,20 @@ end;
 procedure TailHelp;
 begin
     clrscr;
-    fastwriteln(' Usage: tail <file> <parameters>.');
-    fastwriteln(' Output the last part of file.');
+    fastwriteln('Usage: tail <file> <parameters>.');
+    fastwriteln('Output the last part of file.');
     writeln;
-    fastwriteln(' File: Text file from where we are ');
-    fastwriteln(' getting lines.');
+    fastwriteln('File: Text file from where we are ');
+    fastwriteln('getting lines.');
     writeln;
-    fastwriteln(' Parameters: ');
-    fastwriteln(' /h - Display this help and exit.');
-    fastwriteln(' /c<NUM> - Print the first NUM bytes');
-    fastwriteln(' of each file.');
-    fastwriteln(' /n<NUM> - Print the first NUM lines');
-    fastwriteln(' of each file.');
-    fastwriteln(' /v - Output version information and');
-    fastwriteln(' exit.');
+    fastwriteln('Parameters: ');
+    fastwriteln('/h - Display this help and exit.');
+    fastwriteln('/c<NUM> - Print the first NUM bytes');
+    fastwriteln('of each file.');
+    fastwriteln('/n<NUM> - Print the first NUM lines');
+    fastwriteln('of each file.');
+    fastwriteln('/v - Output version information and');
+    fastwriteln('exit.');
     writeln;
     halt;
 end;
@@ -230,9 +230,8 @@ begin
                 begin
                     delete(Temporary, 1, 2);
 
-(*  Parameter /n<count>. Save it into a integer variable. *)
-(*  Parameter /o<file>. Save it into a string variable. *)
-(*  Parameter /r. Save it into a boolean variable. *)
+(*  Parameter /c<NUM>. Save it into a integer variable. *)
+(*  Parameter /n<NUM>. Save it into a integer variable. *)
 
                     case Character of
                         'H': TailHelp;

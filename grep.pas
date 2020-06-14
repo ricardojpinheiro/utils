@@ -1,6 +1,6 @@
-program tac;
+program grep;
 {
-* Print lines on the standard output in reverse.
+* Print lines that match patterns.
 * Compile it using TP3 - more free memory.
 * }
 
@@ -14,10 +14,10 @@ program tac;
 Const
     TotalBufferSize = 767;
     BufferSize = 511;
-    MaxLines = 18200;
+    MaxLines = 100;
 
 Type
-    TParameterVector = array [1..2] of string[80];
+    TParameterVector = array [1..7] of string[80];
     TOutputString = array[1..255] of char;
 
 Var
@@ -30,16 +30,16 @@ Var
     nDrive, BlockReadResult: byte;
     NewPosition, RandomLines, ValReturn: integer;
     EndOfFile: integer;
-    PositionsInOutputString: integer;
-    i, j, k, l, counter: integer;
+    Result, PositionsInOutputString: integer;
+    i, j, k, l, counter, MatchLines: integer;
     Character, TemporaryChar: char;
-    NumberedLines, RepeatedLines, SeekResult, fEOF: boolean;
+    SeekResult, fEOF, Count, Found, Ignore, LineNumber, Reverse: boolean;
     Registers: TRegs;
 
     Buffer: Array[0..1, 0..TotalBufferSize] Of Byte;
     BeginningOfLine: Array[0..MaxLines] of Integer;
     OutputString: TOutputString;
-    PrintString: TString;
+    PrintString, Pattern: TString;
 
 (* Here we use MSX-DOS 2 to do the error handling. *)
 
@@ -143,34 +143,40 @@ end;
 
 (*  Command help.*)
 
-procedure TacHelp;
+procedure GrepHelp;
 begin
     clrscr;
-    fastwriteln('Usage: tac <file> <parameters>.');
-    fastwriteln('Print file in reverse on the ');
-    fastwriteln('standard output.');
-    writeln;
+    fastwriteln('Usage: grep <pattern> <file> <params>.');
+    fastwriteln('print lines that match patterns.');
+    fastwriteln('Pattern: Text to be found.');
     fastwriteln('File: Text file.');
-    writeln;
     fastwriteln('Parameters: ');
-    fastwriteln('/h - Display this help and exit.');
-    fastwriteln('/b - Display $ at beginning of each');
-    fastwriteln('line.');
-    fastwriteln('/e - Display $ at end of each line.');
-    fastwriteln('/n - Number all output lines.');
-    fastwriteln('/t - Display TAB characters as ^I.');
-    fastwriteln('/v - Output version information and ');
-    fastwriteln('exit.');
+        fastwriteln('/a<X> - Print X lines of trailing');
+        fastwriteln('context after matching lines.');
+        fastwriteln('/b<X> - Print X lines of trailing');
+        fastwriteln('context before matching lines.');
+        fastwriteln('/c<X> - Print X lines of output');
+        fastwriteln('context.');
+    fastwriteln('/h - Display this help & exit.');
+    fastwriteln('/i - Ignore case distinctions.');
+        fastwriteln('/m<X> - Stop reading a file after X');
+        fastwriteln('matching lines.');
+    fastwriteln('/n - Prefix each line of output with');
+    fastwriteln('its line number.');
+    fastwriteln('/o - Print a count of matching lines');
+    fastwriteln('for the input file');
+    fastwriteln('/r - Print non-matching lines.');
+    fastwriteln('/v - Output version information & exit.');
     writeln;
     halt;
 end;
 
 (*  Command version.*)
 
-procedure TacVersion;
+procedure GrepVersion;
 begin
     clrscr;
-    fastwriteln('tac version 1.0'); 
+    fastwriteln('grep version 1.0'); 
     fastwriteln('Copyright (c) 2020 Brazilian MSX Crew.');
     fastwriteln('Some rights reserved.');
     writeln;
@@ -184,6 +190,78 @@ begin
     halt;
 end;
 
+function RabinKarp (Pattern: TFileName; Text: TFileName): integer;
+const
+    b = 251;
+var
+    HashPattern, HashText, Bm, j, LengthPattern, LengthText, Result: integer;
+    Found: Boolean;
+begin
+
+(*  Initializing variables. *)
+
+    Found := False;
+    Result := 0;
+    LengthPattern := length (Pattern);
+    HashPattern := 0;
+    HashText := 0;
+    Bm := 1;
+    LengthText := length (Text);
+
+(*  If there isn't any patterns to search, exit. *)
+
+    if LengthPattern = 0 then
+    begin
+        Result := 1;
+        Found := true;
+    end;
+
+    if LengthText >= LengthPattern then
+
+(*  Calculating Hash *)
+
+    for j := 1 to LengthPattern do
+    begin
+        Bm := Bm * b;
+        HashPattern := round(int(HashPattern * b + ord(Pattern[j])));
+        HashText := round(int(HashText * b + ord(Text[j])));
+    end;
+
+    j := LengthPattern;
+  
+(*  Searching *)
+
+    while not Found do
+    begin
+        if (HashPattern = HashText) and (Pattern = Copy (Text, j - LengthPattern + 1, LengthPattern)) then
+        begin
+            Result := j - LengthPattern;
+            Found := true
+        end;
+        if j < LengthText then
+        begin
+            j := j + 1;
+            HashText := round(int(HashText * b - ord (Text[j - LengthPattern]) * Bm + ord (Text[j])));
+        end
+        else
+            Found := true;
+    end;
+    RabinKarp := Result;
+end;
+
+procedure PrintGrep;
+begin
+    if Count = false then
+    begin
+        write(chr(32));
+        if LineNumber = true then write(i, ':');
+        for j := 1 to PositionsInOutputString do
+            write(OutputString[j]);
+        writeln;
+        counter := counter + 1;
+    end;
+end;
+
 begin
 (*  Initializing some variables. *)
     counter := 0;
@@ -192,6 +270,13 @@ begin
     fEOF := false;
     Character := ' ';
     TemporaryChar := ' ';
+    Count := false;
+    Found := false;
+    Ignore := false;
+    LineNumber := false;
+    Reverse := false;
+    Result := 0;
+    MatchLines := maxint;
     fillchar(InputFileName, sizeof(InputFileName), ' ' );
 
 (*  if are we not running in a MSX-DOS 2 machine, exits. 
@@ -208,7 +293,7 @@ begin
     begin
 
 (* No parameters, command prints the help. *)
-        if paramcount = 0 then TacHelp;
+        if paramcount = 0 then GrepHelp;
 
 (*  Clear variables. *)
         fillchar(ParameterVector, sizeof(ParameterVector), ' ' );
@@ -235,15 +320,30 @@ begin
 (*  Parameters. *)
 
                     case Character of
-                        'H': TacHelp;
-                        'V': TacVersion;
+                        'A': begin
+                            end;
+                        'B': begin
+                            end;
+                        'C': begin
+                            end;
+                        'H': GrepHelp;
+                        'I': Ignore := true;
+                        'M': Val(Temporary, MatchLines, ValReturn);
+                        'N': LineNumber := true;
+                        'O': Count := true;
+                        'R': Reverse := true;                        
+                        'V': GrepVersion;
                     end;
                 end;
             end;
         end;
 
-(*  The first parameter should be the file (or the standard input). *)
-        InputFileName := ParameterVector[1];
+(*  The first parameter should be the pattern. *)
+        Pattern := ParameterVector[1];
+
+(*  The second parameter should be the file (or the standard input). *)
+        
+        InputFileName := ParameterVector[2];
 
 (*  Open file *)
         hInputFileName := FileOpen (InputFileName, 'r');
@@ -256,7 +356,7 @@ begin
     
         j := 1;
         k := 1;
-        while (fEOF = false) do
+        while not fEOF do
         begin
             counter := 0;
             fillchar (Buffer[1], BufferSize, 0);
@@ -291,34 +391,32 @@ begin
         BeginningOfLine[EndOfFile] := BeginningOfLine[EndOfFile] - 1;
         EndOfFile := j - 1;
 
-(*  Here the program print the file. *)
+(*  Here the program do the search in the file. *)
 
-        for i := EndOfFile downto 1 do
+        if Ignore = true then
+            for j := 1 to Length(Pattern) do
+                Pattern[j] := upcase(Pattern[j]);
+
+        i := 1;
+        counter := 0;
+        while (i <= EndOfFile) or (counter <= MatchLines) do
         begin
             fillchar(OutputString, sizeof(OutputString), ' ' );
             ReadLineFromFile (i, PositionsInOutputString , OutputString);
-            case Character of
-                'B': write(' $');
-                'N': write('  ',i, ' ');
-                'E': begin
-                        write(chr(32));
-                        OutputString[PositionsInOutputString - 1] := '^';
-                        OutputString[PositionsInOutputString] := 'M';
-                        OutputString[PositionsInOutputString + 1] := '$';
-                        PositionsInOutputString := PositionsInOutputString + 1;
-                    end;
-                else write(chr(32));
-            end;
             for j := 1 to PositionsInOutputString do
             begin
-                if (Character = 'T') and (OutputString[j] = #9) then
-                    write('^I')
-                else
-                    write(OutputString[j]);
+                if Ignore = true then PrintString[j] := upcase(OutputString[j])
+                else PrintString[j] := OutputString[j];
             end;
-                        
-            writeln;
+            Result := RabinKarp(Pattern, PrintString);
+            if Reverse = false then 
+                if Result <> 0 then PrintGrep;
+            if Reverse = true then 
+                if Result = 0 then PrintGrep;
+            i := i + 1;
         end;
+
+        if Count = true then writeln(counter);
 
 (*  Close file. *)
 
