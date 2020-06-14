@@ -48,6 +48,8 @@ doesn't use any parameters, it will print bytes, words and lines.
 ## dos2unix
 ## unix2dos
 
+[Here you can download a ZIP package with all COM files.](https://github.com/ricardojpinheiro/utils/blob/master/utils.zip)
+
 # TODO
 All of them demands optimization, in order to use bigger files in a faster
 way. I'll do it in the future. 
