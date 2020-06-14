@@ -6,8 +6,7 @@ and [PopolonY2K](https://sourceforge.net/projects/oldskooltech/).
 All the libraries are stripped to the minimum (MSX doesn't have plenty of RAM to
 play with), they are in this repository and has the .INC extension in its names.
 
-Note: All the commands' parameters can be known using the /h parameter (h,
-from help).
+Note: All the commands' parameters can be known using the /h parameter (from *h*elp).
 
 ## sleep
 
@@ -21,6 +20,9 @@ the challenge and I can use most of the adquired knowledge to other
 utilities. 
 
 ## less
+## grep
+Search for patterns into a given file.
+
 ## cat
 Sends a file to the standard output.
 
