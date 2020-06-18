@@ -1,3 +1,4 @@
+﻿
 # utils
 This is a repository for some little, nifty and useful Unix utilities that I
 decided to develop for MSX. All of them are written in Turbo Pascal 3.0,
@@ -19,6 +20,8 @@ utilities.
 
 ## grep
 Search for patterns into a given file.
+
+> There is a improved version which uses fast VDP routines and blink table so ir can improve speed and highlight the results. It'll be merged to the main grep command in the future. BTW, you may use /z switch.
 
 ## cat
 Sends a file to the standard output.
