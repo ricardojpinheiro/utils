@@ -17,22 +17,6 @@
 
 Const Vdp14     = 13; {Blink rate register in vdp}
       Vdp13     = 12; {Blink colors High nibble = foreground}
-      White     = 15;
-      Grey      = 14;
-      Purple    = 13;
-      DGreen    = 12;
-      LYellow   = 11;
-      DYellow   = 10;
-      LRed      = 9;
-      Mred      = 8;
-      Cyan      = 7;
-      DRed      = 6;
-      LBlue     = 5;
-      DBlue     = 4;
-      LGreen    = 3;
-      MGreen    = 2;
-      Black     = 1;
-      Transp    = 0;
 
       SetB      = True;
       ResB      = False; {Switch values for setbit }
@@ -68,28 +52,6 @@ begin
     ColTbl[TableAddr] := Byt;
 End; {SetBit}
 
-Procedure BlinkChar (Col, Row: Byte);
-Var
-    TableAddr   :Integer;
-    Bit         :Byte;
-begin
-    TableAddr :=  ((row-1) * 80 + Col-1) Div 8;
-    Bit       :=  ((Row-1) * 80 + Col-1) Mod 8;
-    SetBit (TableAddr, Bit, SetB);
-    WriteVram (0, TXTCOL + TableAddr, Addr(ColTbl[TableAddr]), 1);
-End; {BlinkChar}
-
-Procedure ClearBlinkChar (Col, Row: Byte);
-Var
-    TableAddr   :Integer;
-    Bit         :Byte;
-Begin
-    TableAddr :=  ((row-1) * 80 + Col-1) Div 8;
-    Bit       :=  ((Row-1) * 80 + Col-1) Mod 8;
-    SetBit (TableAddr, Bit, ResB);
-    WriteVram (0, TXTCOL + TableAddr, Addr(ColTbl[TableAddr]), 1);
-End; {BlinkChar}
-
 Procedure Blink (Col, Row, Len: Byte);
 Var
     TableAddr :Integer;
@@ -111,46 +73,8 @@ Begin
     WriteVram(0, TXTCOL, Addr(ColTbl), 256);
 End; {Blink}
 
-Procedure ClearBlink (Col, Row, Len: Byte);
-Var
-    Bit,i     :Byte;
-    TableAddr :Integer;
-Begin
-    TableAddr :=  ((row-1) * 80 + Col-1) Div 8;
-    Bit       :=  ((Row-1) * 80 + Col-1) Mod 8;
-
-    For i:= 1 to Len Do
-    Begin
-        SetBit (TableAddr, Bit, ResB);
-        bit := Bit + 1;
-        If Bit = 8 Then
-        Begin
-            bit := 0;
-            TableAddr := TableAddr + 1;
-        End;
-    End;
-    WriteVram (0, TXTCOL, Addr(ColTbl), 256);
-End; {ClearBlink}
-
 Procedure ClearAllBlinks;
 Begin
     FillChar (ColTbl, 256, 0);
     WriteVram(0, TXTCOL, Addr(ColTbl), 256);
 End; {ClearAllBlinks}
-
-Procedure CursorBlink (Len: Byte);
-Var
-    CSRX    :Byte Absolute $f3dd;
-    CSRY    :Byte Absolute $f3dc;
-Begin
-    Blink (CSRX, CSRY, Len);
-End;
-
-Procedure ClearCursorBlink (Len: Byte);
-Var
-    CSRX    :Byte Absolute $f3dd;
-    CSRY    :Byte Absolute $f3dc;
-Begin
-    ClearBlink (CSRX, CSRY, Len);
-End;
-

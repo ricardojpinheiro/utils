@@ -15,7 +15,7 @@ program grep;
 Const
     TotalBufferSize = 767;
     BufferSize = 511;
-    MaxLines = 16000;
+    MaxLines = 16250;
     b = 251;
 
 Type
@@ -391,14 +391,6 @@ begin
             end;
         end;
 
-        if ExtendedMode = true then
-        begin
-            clrscr;
-            ClearAllBlinks;
-            SetBlinkColors(BackgroundColor, ForegroundColor);
-            SetBlinkRate(15, 0);
-        end;
-
 (*  Open file *)
         hInputFileName := FileOpen (InputFileName, 'r');
 
@@ -445,6 +437,15 @@ begin
         BeginningOfLine[EndOfFile] := BeginningOfLine[EndOfFile] - 1;
         EndOfFile := j - 1;
 
+
+        if ExtendedMode = true then
+        begin
+            ClearAllBlinks;
+            SetBlinkColors(BackgroundColor, ForegroundColor);
+            SetBlinkRate(15, 0);
+            clrscr;
+        end;
+
 (*  Here the program do the search in the file. *)
 
         if Ignore = true then
@@ -484,10 +485,15 @@ begin
                 writeln(temporario);
         end;
 
+        if ExtendedMode = true then
+        begin
+            readln;
+            ClearAllBlinks;
+        end;
+
 (*  Close file. *)
 
         if (not FileClose(hInputFileName)) then ErrorCode(true);
         exit;
     end;
-    ClearAllBlinks;
 end.
