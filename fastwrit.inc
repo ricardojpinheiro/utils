@@ -22,21 +22,38 @@ Begin
         );
 End;
 
-Procedure ChDrv (drive: byte);
-begin
-   MsxIoResult := Bdos($0E, drive)
-end;
-
-Procedure ChDir (DirName: TString);
+Function WhereX:Byte;
 Var
-    Fn : FibName;
-     i : Byte;
+    CSRX: Byte Absolute $f3dd;
 Begin
-    For i := 1 To Length(DirName) Do
-        Fn[i-1] := DirName[i];
-    Fn[i] := Chr(0);
-    Inline($0E/$5A/$11/ Fn /$CD/$05/0/$32/MsxIoResult);
+    WhereX := CSRX;
 End;
+
+Function WhereY:Byte;
+Var
+    CSRY: Byte Absolute $f3dc;
+Begin
+    WhereY := CSRY;
+End;
+
+Procedure FastWrite (St : TString);
+Var
+    CSRX: Byte Absolute $F3DD;
+    CSRY: Byte Absolute $F3DC;
+    TXTNAM: Integer Absolute $f3b3;
+    len: Byte;
+    VramLocation: Integer;
+    Width: Byte;
+Begin
+    Width := Mem[$F3B0];
+    If Width < 80 then Width := 40 else Width := 80;
+    Len := Ord(St[0]);
+    VramLocation := (CSRY-1) * Width + CSRX-1 + TXTNAM;
+    If VramLocation > 2000 Then VramLocation := 0;
+    WriteVram(0,VramLocation,Addr(St)+1,Len);
+    CSRY := ((VramLocation + Len) Div Width)+1 ;
+    CSRX := ((VramLocation + Len) Mod Width)+1 ;
+End; {FastWrite}
 
 Procedure FastWriteln (St : TString);
 Var
