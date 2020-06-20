@@ -1,7 +1,7 @@
 program grep;
 {
 * Print lines that match patterns.
-* Compile it using TP3 - more free memory.
+* Lots of comments!
 * }
 
 {$i d:types.inc}
@@ -10,37 +10,109 @@ program grep;
 {$i d:dos2err.inc}
 {$i d:dos2file.inc}
 {$i d:fastwrit.inc}
+{$i d:blink.inc}
 
 Const
-    TotalBufferSize = 767;
-    BufferSize = 511;
-    MaxLines = 17000;
     b = 251;
 
+{
 Type
-    TOutputString = array[1..255] of char;
     TFourStates = (After, Before, Middle, Nothing);
-
+}
 Var
     MSXDOSversion: TMSXDOSVersion;
     InputFileName: TFileName;
-    Temporary: string[80];
-    TemporaryNumber: string[5];
-    hInputFileName: byte;
-    nDrive, BlockReadResult: byte;
-    NewPosition, RandomLines, ValReturn: integer;
-    EndOfFile: integer;
-    Position, PositionsInOutputString: integer;
-    i, j, k, l, counter, MatchLines, Lines: integer;
-    Character, TemporaryChar: char;
-    SeekResult, fEOF, Count, Found, Ignore, LineNumber, Reverse: boolean;
+    TemporaryNumber: string[8];
+    hInputFileName, nDrive: byte;
+    hInputFile: text;
+    Position, Counter, PositionsInOutputString, ValReturn: integer;
+    i, j, MaxMatchLines, Lines: integer;
+    Character: char;
+    EndOfFile, Count, Found, Ignore, LineNumber, Reverse, ExtendedMode: boolean;
     Registers: TRegs;
+{
     FourStates: TFourStates;
+}    
+    ForegroundColor:    Byte Absolute    $F3E9; { Foreground color }
+    BackgroundColor:    Byte Absolute    $F3EA; { Background color }
+    BorderColor:        Byte Absolute    $F3EB; { Border color }
     
-    Buffer: Array[0..1, 0..TotalBufferSize] Of Byte;
-    BeginningOfLine: Array[0..MaxLines] of Integer;
-    OutputString: TOutputString;
-    PrintString, Pattern: TString;
+    Temporary, OutputString, PrintString, Pattern: TString;
+
+(* Finds the last occurence of a chat into a string. *)
+
+function LastPos(Character: char; Phrase: TString): integer;
+var
+    i: integer;
+    Found: boolean;
+begin
+    i := length(Phrase);
+    Found := false;
+    repeat
+        if Phrase[i] = Character then
+        begin
+            LastPos := i + 1;
+            Found := true;
+        end;
+        i := i - 1;
+    until Found = true;
+    if Not Found then LastPos := 0;
+end;
+
+(* Here we use the APPEND environment variable. *)
+
+procedure CheatAPPEND (FileName: TFileName);
+var
+    FirstTwoDotsFound, LastBackSlashFound: byte;
+    APPEND: string[7];
+    Path, Temporary: TFileName;
+begin
+
+(* Initializing some variables... *)
+
+    fillchar(Path, sizeof(Path), ' ' );
+    fillchar(Temporary, sizeof(Temporary), ' ' );
+    APPEND[0] := 'A';
+    APPEND[1] := 'P';
+    APPEND[2] := 'P';
+    APPEND[3] := 'E';
+    APPEND[4] := 'N';
+    APPEND[5] := 'D';
+    APPEND[6] := #0;
+    
+(*  Sees if in the path there is a ':', used with drive letter. *)    
+    
+    FirstTwoDotsFound := Pos (chr(58), FileName);
+
+(*  If there is a two dots...  *)
+    
+    if FirstTwoDotsFound <> 0 then
+    begin
+    
+(*  Let me see where is the last backslash character...  *)
+
+        LastBackSlashFound := LastPos (chr(92), FileName);
+        Path := copy (FileName, 1, LastBackSlashFound);
+
+(*  Copy the path to the variable. *)
+        
+        for i := 1 to LastBackSlashFound - 1 do
+            Temporary[i - 1] := Path[i];
+        Temporary[LastBackSlashFound] := #0;
+        Path := Temporary;
+
+(*  Sets the APPEND environment variable. *)
+        
+        with Registers do
+        begin
+            B := sizeof (Path);
+            C := ctSetEnvironmentItem;
+            HL := addr (APPEND);
+            DE := addr (Path);
+        end;
+        MSXBDOS (Registers);
+    end;
+end;
 
 (* Here we use MSX-DOS 2 to do the error handling. *)
 
@@ -55,92 +127,7 @@ begin
     WriteLn (ErrorMessage);
     if ExitsOrNot = true then exit;
 end;
-
-(*  Reads a random line from a file. if UsesOutputFileName is true, then
-    it will be send to a output file. *)
-    
-procedure ReadLineFromFile (Line: integer; var PositionsInOutputString: Integer; var OutputString: TOutputString);
-var
-    TemporaryReal: real;
-    Beginning, Finish, CurrentBlock, InitialBlock, FinalBlock: integer;
-    PositionsInTheBuffer, i, j: integer;
-    Character: char;
-
-begin
-    TemporaryReal := 0.0;
-
-(*  Move seek pointer to the beginning of the file. *)
-
-    SeekResult := FileSeek (hInputFileName, 0, ctSeekSet, NewPosition);
-
-(*  Several calculations to know which block is it. *)
-
-    for i := 0 to Line - 1 do
-        TemporaryReal := TemporaryReal + BeginningOfLine[i];
-    
-    Beginning := round(int(TemporaryReal)) - 1;
-    Finish := Beginning + BeginningOfLine[Line] - 2;
-    
-    if Line = 1 then Beginning := Beginning + 2;
-    
-    InitialBlock := round(int(Beginning / (BufferSize + 1)));
-    FinalBlock := Finish div (BufferSize + 1);
-
-(*  Move to the InitialBlock-th position. *)
-
-    for j := 1 to InitialBlock do
-        if (not FileSeek (hInputFileName, BufferSize, ctSeekCur, NewPosition)) then
-            ErrorCode(true);
-
-(*  Read the k and k+1 blocks. *)
-
-    for i := 0 to 1 do
-    begin
-        fillchar (Buffer[i], TotalBufferSize, 0);
-
-        BlockReadResult := FileBlockRead(hInputFileName, Buffer[i], BufferSize);
-        if (BlockReadResult = ctReadWriteError) then
-            ErrorCode(true);
-
-        for j := 1 to BufferSize do
-            if (Buffer[i,j] = ord(13)) then Buffer[i,j] := ord(255);
-    end;
-
-(*  Copy the broken occurrence from the 2nd buffer to the 1st. *)
-    
-    k := 0;
-    repeat
-        Character := chr(Buffer[1, k]);
-        Buffer[0, BufferSize + k] := ord(Character);
-        k := k + 1;
-    until Character = chr(255);
-    
-    Buffer[0, BufferSize + k] := ord(255);
-    
-    CurrentBlock := 0;
-    PositionsInTheBuffer := Beginning - 1;
-    PositionsInOutputString := 1;
-    l := Beginning mod (BufferSize + 1) - 1 + InitialBlock;
-    fillchar(OutputString, sizeof(OutputString), ' ' );
-
-    while (PositionsInTheBuffer < Finish) do
-    begin
-        OutputString[PositionsInOutputString] := chr(Buffer[CurrentBlock, l]);
-        if (l = BufferSize) then
-        begin
-            CurrentBlock := CurrentBlock + 1;
-            l := 0;
-        end;
-
-         if OutputString[PositionsInOutputString] = chr(255) then 
-            OutputString[PositionsInOutputString] := chr(13);
-
-        PositionsInTheBuffer := PositionsInTheBuffer + 1;
-        PositionsInOutputString := PositionsInOutputString + 1;
-        l := l + 1;
-    end;
-end;
-
+ 
 (*  Command help.*)
 
 procedure GrepHelp;
@@ -151,12 +138,14 @@ begin
     fastwriteln('Pattern: Text to be found.');
     fastwriteln('File: Text file.');
     fastwriteln('Parameters: ');
+{    
     fastwriteln('/a<X> - Print X lines of trailing');
     fastwriteln('context after matching lines.');
     fastwriteln('/b<X> - Print X lines of trailing');
     fastwriteln('context before matching lines.');
     fastwriteln('/c<X> - Print X lines of output');
     fastwriteln('context.');
+}     
     fastwriteln('/h - Display this help & exit.');
     fastwriteln('/i - Ignore case distinctions.');
     fastwriteln('/m<X> - Stop reading a file after X');
@@ -164,9 +153,10 @@ begin
     fastwriteln('/n - Prefix each line of output with');
     fastwriteln('its line number.');
     fastwriteln('/o - Print a count of matching lines');
-    fastwriteln('for the input file');
+    fastwriteln('for the input file.');
     fastwriteln('/r - Print non-matching lines.');
     fastwriteln('/v - Output version information & exit.');
+    fastwriteln('/z - Extended mode (MSX 2, 80 columns).');
     writeln;
     halt;
 end;
@@ -189,6 +179,8 @@ begin
     writeln;
     halt;
 end;
+
+(* Rabin-Karp algorithm, which is used for searching a pattern into the string. *)
 
 function RabinKarp (Pattern: TString; Text: TString): integer;
 var
@@ -252,69 +244,94 @@ procedure PrintGrep;
 var
     k: integer;
     
-    procedure ReadLineFile (l: integer);
-    begin
-        fillchar(OutputString, sizeof(OutputString), ' ' );
-        ReadLineFromFile (l, PositionsInOutputString , OutputString);
-    end;
-
     procedure WriteGrep (l: integer);
+    var
+        Factor: Byte;
     begin
-        write(chr(32));
-        if LineNumber = true then write(l, ':');
-        for j := 1 to PositionsInOutputString do
-            write(OutputString[j]);
-        writeln;
-        counter := counter + 1;
+    
+(* Slight adjust to be used in Extended mode. *)
+    
+        Factor := Length(PrintString) div 80;
+        
+(* Removes the first character, which is a space. *)        
+        
+        delete(PrintString, 1, 1);
+        
+(* /n - Line number. *)        
+        
+        if LineNumber = true then
+        begin
+            fillchar(TemporaryNumber, sizeof(TemporaryNumber), ' ' );
+            str(l, TemporaryNumber);
+            TemporaryNumber := TemporaryNumber + ':';
+
+(* /z - Extended mode. *)            
+            
+            if ExtendedMode = false then
+                writeln(TemporaryNumber, PrintString)
+            else
+            begin
+                PrintString := concat (TemporaryNumber, PrintString);
+                fastwriteln(PrintString);
+                if Reverse = false then
+                    Blink(Position + Length(TemporaryNumber) + 1, WhereY - (Factor + 1), Length(Pattern));
+            end;
+        end
+        else
+            if ExtendedMode = false then
+            begin
+                writeln(PrintString);
+            end
+            else
+            begin
+                fastwriteln(PrintString);
+                if Reverse = false then
+                    Blink(Position + 1, WhereY - (Factor + 1), Length(Pattern));
+            end;
     end;
 
 begin
+
+(* Counts how many matches does it had. *)
+
+    Counter := Counter + 1;
     if Count = false then
-    begin
+    
+(* The FourStates variable aren't being used - /a<x>, /b<x> and /c<x> isn't implemented. 
+* Maybe in the future... *)    
+{
         case FourStates of
-            After: begin
-                        for k := i to i + Lines do
-                        begin
-                            ReadLineFile(k);
-                            WriteGrep(k);
-                        end;
-                    end;
-            Before: begin
-                        for k := i - Lines to i do
-                        begin
-                            ReadLineFile(k);
-                            WriteGrep(k);
-                        end;
-                    end;
-            Middle: begin
-                        for k := (i - Lines) to (i + Lines) do
-                        begin
-                            ReadLineFile(k);
-                            WriteGrep(k);
-                        end;
-                    end;
-            Nothing: WriteGrep(i);
+            After: for k := i to i + Lines do
+                        WriteGrep(k);
+            Before: for k := i - Lines to i do
+                        WriteGrep(k);
+            Middle: for k := (i - Lines) to (i + Lines) do
+                        WriteGrep(k);
+            Nothing: WriteGrep(Lines);
         end;
-    end;
+}        
+        WriteGrep(Lines);
 end;
 
 begin
 (*  Initializing some variables. *)
-    counter := 0;
     nDrive := 0;
-    NewPosition := 0;
-    fEOF := false;
     Character := ' ';
-    TemporaryChar := ' ';
+    Counter := 0;
     Count := false;
     Found := false;
     Ignore := false;
     LineNumber := false;
     Reverse := false;
     Position := 0;
-    MatchLines := maxint;
+    MaxMatchLines := maxint;
+{
     FourStates := Nothing;
+}
+    ExtendedMode := false;
+    EndOfFile := false;
     fillchar(InputFileName, sizeof(InputFileName), ' ' );
+    ClearAllBlinks;
 
 (*  if are we not running in a MSX-DOS 2 machine, exits. 
 *   Else... Runs the program. *)
@@ -329,13 +346,13 @@ begin
     else 
     begin
 
-(* No parameters, command prints the help. *)
+(*  No parameters, command prints the help. *)
         if paramcount = 0 then GrepHelp;
 
 (*  The first parameter should be the pattern. *)
         Pattern := paramstr(1);
 
-(*  The second parameter should be the file (or the standard input). *)
+(*  The second parameter should be the file. *)
         InputFileName := paramstr(2);
 
 (*  Read parameters, and upcase them. *)
@@ -352,102 +369,111 @@ begin
 (*  Parameters. *)
 
                 case Character of
+{                
                     'A': FourStates := After;
                     'B': FourStates := Before;
                     'C': FourStates := Middle;
+}
                     'H': GrepHelp;
                     'I': Ignore := true;
-                    'M': Val(Temporary, MatchLines, ValReturn);
+                    'M': Val(Temporary, MaxMatchLines, ValReturn);
                     'N': LineNumber := true;
                     'O': Count := true;
                     'R': Reverse := true;                        
                     'V': GrepVersion;
+                    'Z': ExtendedMode := true;
                 end;
+{                
                 if FourStates <> Nothing then Val(Temporary, Lines, ValReturn);
+}
             end;
         end;
 
+(*  Cheats the APPEND environment variable. *)
+
+        CheatAPPEND(InputFileName);
+
 (*  Open file *)
+
         hInputFileName := FileOpen (InputFileName, 'r');
 
 (*  if there is any problem regarding the opening process, show the error code. *)
+
         if (hInputFileName in [ctInvalidFileHandle, ctInvalidOpenMode]) then ErrorCode (true);
 
-(*  Get file information. *)
-        SeekResult := FileSeek( hInputFileName, 0, ctSeekSet, NewPosition );
-    
-        j := 1;
-        k := 1;
-        while not fEOF do
-        begin
-            counter := 0;
-            fillchar (Buffer[1], BufferSize, 0);
+        assign (hInputFile, InputFileName);
+        reset (hInputFile);
 
-            BlockReadResult := FileBlockRead(hInputFileName, Buffer[1], BufferSize);
-            if (BlockReadResult = ctReadWriteError) then ErrorCode(true);
+(*  Set blink conditions. *)
+
+        if ExtendedMode = true then
+        begin
+            ClearAllBlinks;
+            SetBlinkColors(BackgroundColor, ForegroundColor);
+            SetBlinkRate(15, 0);
+            clrscr;
+        end;
+
+(*  Read file. Main loop. *)
+
+        Lines := 0;
+        while Not EndOfFile do
+        begin
+            EndOfFile := EOF(hInputFile);
+            fillchar(PrintString, sizeof(PrintString), ' ' );
             
-            for i := 0 to BufferSize do
-                if Buffer[1,i] <> 0 then counter := counter + 1;
-
-            i := 0;
-            l := 2;
-            while (i < BufferSize) do
-            begin
-                TemporaryChar := chr(Buffer[1,i]);
-                if j > 1 then l := 0;
-                if TemporaryChar = #13 then
-                begin
-                    BeginningOfLine[j] := k + l;
-                    j := j + 1;
-                    k := 0;
-                end;
-                i := i + 1;
-                k := k + 1;
-            end;
-
-            if counter = 1 then fEOF := true;
-
-        end;
-        BeginningOfLine[0] := 0;
-        BeginningOfLine[1] := BeginningOfLine[1] + 1;
-        BeginningOfLine[EndOfFile] := BeginningOfLine[EndOfFile] - 1;
-        EndOfFile := j - 1;
-
-(*  Here the program do the search in the file. *)
-
-        if Ignore = true then
-            for j := 1 to Length(Pattern) do
-                Pattern[j] := upcase(Pattern[j]);
-
-        i := 1;
-        counter := 0;
-        while (i <= EndOfFile) do
-        begin
-            fillchar(OutputString, sizeof(OutputString), ' ' );
-            ReadLineFromFile (i, PositionsInOutputString , OutputString);
-            for j := 1 to PositionsInOutputString do
-            begin
-                if Ignore = true then PrintString[j] := upcase(OutputString[j])
-                else PrintString[j] := OutputString[j];
-            end;
+            readln (hInputFile, PrintString);
             insert(chr(32), PrintString, 1);
-            PrintString[0] := chr(PositionsInOutputString + 1);
-            Position := RabinKarp(Pattern, PrintString);
-            if Reverse = false then 
-                if Position <> 0 then PrintGrep;
-            if Reverse = true then 
-                if Position = 0 then PrintGrep;
-            i := i + 1;
-            if MatchLines < maxint then
-                if counter = MatchLines then
-                    i := EndOfFile + 1;
+            OutputString := PrintString;
+            Lines := Lines + 1;
+
+(*  /i - Case insensitive. *)
+
+            if Ignore = true then
+            begin
+                for i := 1 to Length(Pattern) do
+                    Pattern[i] := upcase(Pattern[i]);
+                for i := 1 to Length(OutputString) do
+                    OutputString[i] := upcase(OutputString[i]);
+            end;
+
+            PositionsInOutputString := length(PrintString);
+            Position := RabinKarp(Pattern, OutputString);
+
+(*  /r - If reverse mode is activated or not. *)
+            
+            case Reverse of
+                false: if Position <> 0 then PrintGrep;
+                true: if Position = 0 then PrintGrep;
+            end;
+
+(*  /m<x> - If matched lines exceeds the maximum, then ends the process. *)
+            
+            if Counter >= MaxMatchLines then EndOfFile := true;
+
         end;
 
-        if Count = true then writeln(counter);
+(*  /o - only gives how many ocurrences. *)
 
+        if Count = true then 
+        begin
+            str(Counter, Temporary);
+            if ExtendedMode = true then fastwriteln(Temporary)
+                else writeln(Temporary);
+        end;
+
+(*  /z - If extended mode is activated, then we wait for a key *)
+
+        if ExtendedMode = true then
+        begin
+            read(kbd, Character);
+            if Character <> ' ' then ClearAllBlinks;
+        end;
+        
 (*  Close file. *)
 
+        CheatAPPEND(' ');
         if (not FileClose(hInputFileName)) then ErrorCode(true);
-        exit;
+        close(hInputFile);
     end;
 end.
