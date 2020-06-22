@@ -14,7 +14,10 @@ program grep;
 
 Const
     b = 251;
+    Limit = 255;
 
+type
+    BMTable  = array[0..Limit] of byte;
 {
 Type
     TFourStates = (After, Before, Middle, Nothing);
@@ -38,6 +41,8 @@ Var
     BorderColor:        Byte Absolute    $F3EB; { Border color }
     
     Temporary, OutputString, PrintString, Pattern: TString;
+    
+    BMT, Buffer: BMTable;
 
 (* Finds the last occurence of a chat into a string. *)
 
@@ -72,12 +77,8 @@ begin
 
     fillchar(Path, sizeof(Path), ' ' );
     fillchar(Temporary, sizeof(Temporary), ' ' );
-    APPEND[0] := 'A';
-    APPEND[1] := 'P';
-    APPEND[2] := 'P';
-    APPEND[3] := 'E';
-    APPEND[4] := 'N';
-    APPEND[5] := 'D';
+    APPEND[0] := 'A';   APPEND[1] := 'P';   APPEND[2] := 'P';
+    APPEND[3] := 'E';   APPEND[4] := 'N';   APPEND[5] := 'D';
     APPEND[6] := #0;
     
 (*  Sees if in the path there is a ':', used with drive letter. *)    
@@ -166,7 +167,7 @@ end;
 procedure GrepVersion;
 begin
     clrscr;
-    fastwriteln('grep version 1.0'); 
+    fastwriteln('grep version 3.0'); 
     fastwriteln('Copyright (c) 2020 Brazilian MSX Crew.');
     fastwriteln('Some rights reserved.');
     writeln;
@@ -180,64 +181,70 @@ begin
     halt;
 end;
 
-(* Rabin-Karp algorithm, which is used for searching a pattern into the string. *)
+(* Create a Boyer-Moore index-table to be used. *)
 
-function RabinKarp (Pattern: TString; Text: TString): integer;
+procedure CreateBMTable (var BMT: BMTable; Pattern : TString; ExactCase : boolean);
 var
-    HashPattern, HashText, Bm, j, LengthPattern, LengthText, Result: integer;
-    Found : Boolean;
-  
+    Index : byte;
+begin
+    fillchar(BMT, sizeof(BMT), length(Pattern));
+    if ExactCase then
+        for Index := 1 to length(Pattern) do
+            Pattern[Index] := upcase(Pattern[Index]);
+        for Index := 1 to length(Pattern) do
+            BMT[ord(Pattern[Index])] := (length(Pattern) - Index);
+end;
+
+(* Boyer-Moore Search function. *)
+
+function BoyerMoore (var BMT: BMTable; var Buffer; BufferSize: integer; Pattern: TString; ExactCase: boolean): integer;
+var
+    Buffer2 : array[1..Limit] of char absolute Buffer;
+    Index1, Index2, PatternSize : integer;
 begin
 
-(*  Initializing variables. *)
+(* BoyerMoore returns 0 if BufferSize exceeds Limit. Only a precaution. *)
 
-    Found := False;
-    Result := 0;
-    LengthPattern := length(Pattern);
-    HashPattern := 0;
-    HashText := 0;
-    Bm := 1;
-    LengthText := length(Text);
-
-(*  If there isn't any patterns to search, exit. *)
-
-    if LengthPattern = 0 then
+    if (BufferSize > Limit)  then
+        begin
+            BoyerMoore := 0;
+            exit;
+        end;
+        
+    PatternSize := length(Pattern);
+    
+    if ExactCase then
     begin
-        Result := 1;
-        Found := true;
+        for Index1 := 1 to BufferSize do
+            if (Buffer2[Index1] > #96) and (Buffer2[Index1] < #123) then
+                Buffer2[Index1] := chr(ord(Buffer2[Index1]) - 32);
+        for Index1 := 1 to length(Pattern) do
+            Pattern[Index1] := upcase(Pattern[Index1]);
     end;
-
-    if LengthText >= LengthPattern then
-
-(*  Calculating Hash *)
-
-        for j := 1 to LengthPattern do
+    
+    Index1 := PatternSize;
+    Index2 := PatternSize;
+    
+    repeat
+        if (Buffer2[Index1] = Pattern[Index2]) then
         begin
-            Bm := Bm * b;
-            HashPattern := round(int(HashPattern * b + ord(Pattern[j])));
-            HashText := round(int(HashText * b + ord(Text[j])));
-        end;
-
-    j := LengthPattern;
-  
-(*  Searching *)
-
-    while not Found do
-    begin
-        if (HashPattern = HashText) and (Pattern = Copy (Text, j - LengthPattern + 1, LengthPattern)) then
-        begin
-            Result := j - LengthPattern;
-            Found := true
-        end;
-        if j < LengthText then
-        begin
-            j := j + 1;
-            HashText := round(int(HashText * b - ord (Text[j - LengthPattern]) * Bm + ord (Text[j])));
+            Index1 := Index1 - 1;
+            Index2 := Index2 - 1;
         end
         else
-            Found := true;
-    end;
-    RabinKarp := Result;
+        begin
+            if (succ(PatternSize - Index2) > (BMT[ord(Buffer2[Index1])])) then
+                Index1 := Index1 + succ(PatternSize - Index2)
+            else
+                Index1 := Index1 + BMT[ord(Buffer2[Index1])];
+            Index2 := PatternSize;
+        end;
+    until (Index2 < 1) or (Index1 > BufferSize);
+    
+    if (Index1 > BufferSize) then
+      BoyerMoore := 0
+    else
+      BoyerMoore := succ(Index1);
 end;
 
 procedure PrintGrep;
@@ -274,7 +281,7 @@ var
                 PrintString := concat (TemporaryNumber, PrintString);
                 fastwriteln(PrintString);
                 if Reverse = false then
-                    Blink(Position + Length(TemporaryNumber) + 1, WhereY - (Factor + 1), Length(Pattern));
+                    Blink(Position + Length(TemporaryNumber) - 2, WhereY - (Factor + 1), Length(Pattern));
             end;
         end
         else
@@ -286,7 +293,7 @@ var
             begin
                 fastwriteln(PrintString);
                 if Reverse = false then
-                    Blink(Position + 1, WhereY - (Factor + 1), Length(Pattern));
+                    Blink(Position - 2, WhereY - (Factor + 1), Length(Pattern));
             end;
     end;
 
@@ -436,9 +443,16 @@ begin
                 for i := 1 to Length(OutputString) do
                     OutputString[i] := upcase(OutputString[i]);
             end;
-
+        
             PositionsInOutputString := length(PrintString);
-            Position := RabinKarp(Pattern, OutputString);
+            fillchar(BMT, sizeof(BMT), 0);
+            fillchar(Buffer, sizeof(Buffer), 0);
+            
+            for i := 1 to Length(OutputString) do
+                Buffer[i] := ord(OutputString[i]);
+
+            CreateBMTable(BMT, Pattern, Ignore);
+            Position := BoyerMoore(BMT, Buffer, PositionsInOutputString, Pattern, Ignore);
 
 (*  /r - If reverse mode is activated or not. *)
             
