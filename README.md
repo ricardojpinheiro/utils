@@ -20,6 +20,10 @@ utilities.
 
 ## grep
 Search for patterns into a given file.
+> It uses the Boyer-Moore string search algorithm, which is really fast,
+> even for an old 3,58 Mhz Z80. Amazing!
+> TODO: It finds the first occurrence of a string into the line. We need to
+> show all matches.
 
 ## cat
 Sends a file to the standard output.
