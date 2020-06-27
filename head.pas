@@ -1,7 +1,6 @@
 program head;
 {
-* output the first part of files.
-* Compile it using TP3 - more free memory.
+* Print lines on the standard output.
 * }
 
 {$i d:types.inc}
@@ -11,14 +10,8 @@ program head;
 {$i d:dos2file.inc}
 {$i d:fastwrit.inc}
 
-Const
-    TotalBufferSize = 767;
-    BufferSize = 511;
-    MaxLines = 17500;
-
 Type
-    TParameterVector = array [1..4] of string[80];
-    TOutputString = array[1..255] of char;
+    TParameterVector = array [1..2] of string[80];
 
 Var
     MSXDOSversion: TMSXDOSVersion;
@@ -26,17 +19,87 @@ Var
     InputFileName: TFileName;
     Temporary: string[80];
     TemporaryNumber: string[5];
-    hInputFileName, nDrive, BlockReadResult: byte;
-    NewPosition, NumberLines, NumberBytes, Bytes, Lines: integer;
-    EndOfFile, TotalBytes, ValReturn, PositionsInOutputString: integer;
+    hInputFileName: byte;
+    hInputFile: text;
+    Lines, MaxLines, ValResult: integer;
     i, j, k, l, counter: integer;
+    Chars, Chars2, MaxChars: real;
     Character: char;
-    SeekResult, fEOF: boolean;
+    EndOfFile, CharLimit, Beginning, Finish, NumberedLines, PrintTab: boolean;
     Registers: TRegs;
 
-    Buffer: array[0..1, 0..TotalBufferSize] of byte;
-    BeginningOfLine: array[0..MaxLines] of integer;
-    OutputString: TOutputString;
+    PrintString: TString;
+
+(* Finds the last occurence of a chat into a string. *)
+
+function LastPos(Character: char; Phrase: TString): integer;
+var
+    i: integer;
+    Found: boolean;
+begin
+    i := length(Phrase);
+    Found := false;
+    repeat
+        if Phrase[i] = Character then
+        begin
+            LastPos := i + 1;
+            Found := true;
+        end;
+        i := i - 1;
+    until Found = true;
+    if Not Found then LastPos := 0;
+end;
+
+(* Here we use the APPEND environment variable. *)
+
+procedure CheatAPPEND (FileName: TFileName);
+var
+    FirstTwoDotsFound, LastBackSlashFound: byte;
+    APPEND: string[7];
+    Path, Temporary: TFileName;
+begin
+
+(* Initializing some variables... *)
+
+    fillchar(Path, sizeof(Path), ' ' );
+    fillchar(Temporary, sizeof(Temporary), ' ' );
+    APPEND[0] := 'A';   APPEND[1] := 'P';   APPEND[2] := 'P';
+    APPEND[3] := 'E';   APPEND[4] := 'N';   APPEND[5] := 'D';
+    APPEND[6] := #0;
+    
+(*  Sees if in the path there is a ':', used with drive letter. *)    
+    
+    FirstTwoDotsFound := Pos (chr(58), FileName);
+
+(*  If there is a two dots...  *)
+    
+    if FirstTwoDotsFound <> 0 then
+    begin
+    
+(*  Let me see where is the last backslash character...  *)
+
+        LastBackSlashFound := LastPos (chr(92), FileName);
+        Path := copy (FileName, 1, LastBackSlashFound);
+
+(*  Copy the path to the variable. *)
+        
+        for i := 1 to LastBackSlashFound - 1 do
+            Temporary[i - 1] := Path[i];
+        Temporary[LastBackSlashFound] := #0;
+        Path := Temporary;
+
+(*  Sets the APPEND environment variable. *)
+        
+        with Registers do
+        begin
+            B := sizeof (Path);
+            C := ctSetEnvironmentItem;
+            HL := addr (APPEND);
+            DE := addr (Path);
+        end;
+        MSXBDOS (Registers);
+    end;
+end;
 
 (* Here we use MSX-DOS 2 to do the error handling. *)
 
@@ -53,90 +116,6 @@ begin
         Exit;
 end;
 
-(*  Reads a random line from a file. if UsesOutputFileName is true, then
-    it will be send to a output file. *)
-    
-procedure ReadLineFromFile (Line: integer; var PositionsInOutputString: Integer; var OutputString: TOutputString);
-var
-    TemporaryReal: real;
-    Beginning, Finish, CurrentBlock, InitialBlock, FinalBlock: integer;
-    PositionsInTheBuffer, i, j: integer;
-   
-begin
-    TemporaryReal := 0.0;
-
-(*  Move seek pointer to the beginning of the file. *)
-
-    SeekResult := FileSeek (hInputFileName, 0, ctSeekSet, NewPosition);
-
-(*  Several calculations to know which block is it. *)
-
-    for i := 0 to Line - 1 do
-        TemporaryReal := TemporaryReal + BeginningOfLine[i];
-    
-    Beginning := round(int(TemporaryReal)) - 1;
-    Finish := Beginning + BeginningOfLine[Line] - 2;
-    
-    if Line = 1 then Beginning := Beginning + 2;
-    
-    InitialBlock := round(int(Beginning / (BufferSize + 1)));
-    FinalBlock := Finish div (BufferSize + 1);
-
-(*  Move to the InitialBlock-th position. *)
-
-    for j := 1 to InitialBlock do
-        if (not FileSeek (hInputFileName, BufferSize, ctSeekCur, NewPosition)) then
-            ErrorCode(true);
-
-(*  Read the k and k+1 blocks. *)
-
-    for i := 0 to 1 do
-    begin
-        fillchar (Buffer[i], TotalBufferSize, 0);
-
-        BlockReadResult := FileBlockRead(hInputFileName, Buffer[i], BufferSize);
-        if (BlockReadResult = ctReadWriteError) then
-            ErrorCode(true);
-
-        for j := 1 to BufferSize do
-            if (Buffer[i,j] = ord(13)) then Buffer[i,j] := ord(255);
-    end;
-
-(*  Copy the broken occurrence from the 2nd buffer to the 1st. *)
-    
-    k := 0;
-    repeat
-        Character := chr(Buffer[1, k]);
-        Buffer[0, BufferSize + k] := ord(Character);
-        k := k + 1;
-    until Character = chr(255);
-    
-    Buffer[0, BufferSize + k] := ord(255);
-    
-    CurrentBlock := 0;
-    PositionsInTheBuffer := Beginning - 1;
-    PositionsInOutputString := 1;
-    l := Beginning mod (BufferSize + 1) - 1 + InitialBlock;
-    fillchar(OutputString, sizeof(OutputString), ' ' );
-
-    while (PositionsInTheBuffer < Finish) do
-    begin
-        OutputString[PositionsInOutputString] := chr(Buffer[CurrentBlock, l]);
-        if (l = BufferSize) then
-        begin
-            CurrentBlock := CurrentBlock + 1;
-            l := 0;
-        end;
-
-         if OutputString[PositionsInOutputString] = chr(255) then 
-            OutputString[PositionsInOutputString] := chr(13);
-
-        PositionsInTheBuffer := PositionsInTheBuffer + 1;
-        PositionsInOutputString := PositionsInOutputString + 1;
-        l := l + 1;
-    end;
-end;
-
 (*  Command help.*)
 
 procedure HeadHelp;
@@ -149,13 +128,17 @@ begin
     fastwriteln(' getting lines.');
     writeln;
     fastwriteln(' Parameters: ');
-    fastwriteln(' /h - Display this help and exit.');
-    fastwriteln(' /c<NUM> - Print the first NUM bytes');
-    fastwriteln(' of each file.');
-    fastwriteln(' /n<NUM> - Print the first NUM lines');
-    fastwriteln(' of each file.');
-    fastwriteln(' /v - Output version information and');
-    fastwriteln(' exit.');
+    fastwriteln('/b - Display $ at beginning of each');
+    fastwriteln('line.');
+    fastwriteln('/c<NUM> - Print the first NUM bytes');
+    fastwriteln('of each file.');
+    fastwriteln('/e - Display $ at end of each line.');
+    fastwriteln('/h - Display this help and exit.');
+    fastwriteln('/l<NUM> - Print the first NUM lines');
+    fastwriteln('of each file.');
+    fastwriteln('/n - Number all output lines.');
+    fastwriteln('/t - Display TAB characters as ^I.');
+    fastwriteln('/v - Output version information & exit.');
     writeln;
     halt;
 end;
@@ -165,15 +148,15 @@ end;
 procedure HeadVersion;
 begin
     clrscr;
-    fastwriteln('head version 1.0'); 
+    fastwriteln('head version 2.0'); 
     fastwriteln('Copyright (c) 2020 Brazilian MSX Crew.');
     fastwriteln('Some rights reserved.');
     writeln;
-    fastwriteln('License GPLv3+: GNU GPL v. 3 or later');
+    fastwriteln('License GPLv3+: GNU GPL v. 3 or later ');
     fastwriteln('<https://gnu.org/licenses/gpl.html>');
     fastwriteln('This is free software: you are free to');
-    fastwriteln('change and redistribute it. There is');
-    fastwriteln('NO WARRANTY to the extent permitted');
+    fastwriteln('change and redistribute it. There is ');
+    fastwriteln('NO WARRANTY to the extent permitted ');
     fastwriteln('by law.');
     writeln;
     halt;
@@ -181,16 +164,15 @@ end;
 
 begin
 (*  Initializing some variables. *)
-    counter := 0;
-    nDrive := 0;
-    NewPosition := 0;
-    NumberLines := 10;
-    NumberBytes := 0;
-    TotalBytes := 0;
-    fEOF := false;
     Character := ' ';
+    CharLimit := false;
+    Beginning := false;
+    Finish := false;
+    NumberedLines := false;
+    EndOfFile := false;
+    PrintTab := false;
+    MaxLines := 10;
     fillchar(InputFileName, sizeof(InputFileName), ' ' );
-    fillchar(TemporaryNumber, sizeof(TemporaryNumber), ' ' );
 
 (*  if are we not running in a MSX-DOS 2 machine, exits. 
 *   Else... Runs the program. *)
@@ -225,28 +207,25 @@ begin
             for i := 1 to paramcount do
             begin
                 Temporary := ParameterVector[i];
-                Character := Temporary[2];
+                Character := upcase(Temporary[2]);
                 if Temporary[1] = '/' then
                 begin
                     delete(Temporary, 1, 2);
 
-(*  Parameter /c<NUM>. Save it into a integer variable. *)
-(*  Parameter /n<NUM>. Save it into a integer variable. *)
+(*  Parameters. *)
 
                     case Character of
-                        'H': HeadHelp;
-                        'N': begin
-                                TemporaryNumber := copy (Temporary, 1, length(Temporary));
-                                Val(TemporaryNumber, NumberLines, ValReturn);
-                                NumberBytes := 0;
-                            end;
+                        'B': Beginning := true;
                         'C': begin
-                                TemporaryNumber := copy (Temporary, 1, length(Temporary));
-                                Val(TemporaryNumber, NumberBytes, ValReturn);
-                                NumberLines := 0;
+                                CharLimit := true;
+                                val(Temporary, MaxChars, ValResult);
                             end;
+                        'E': Finish := true;
+                        'H': HeadHelp;
+                        'L': val(Temporary, MaxLines, ValResult);
+                        'N': NumberedLines := true;
+                        'T': PrintTab := true;
                         'V': HeadVersion;
-                        else    HeadHelp;
                     end;
                 end;
             end;
@@ -254,116 +233,72 @@ begin
 
 (*  The first parameter should be the file (or the standard input). *)
         InputFileName := ParameterVector[1];
+        
+(*  Cheats the APPEND environment variable. *)
+        CheatAPPEND(InputFileName);
 
 (*  Open file *)
+
         hInputFileName := FileOpen (InputFileName, 'r');
 
 (*  if there is any problem regarding the opening process, show the error code. *)
+
         if (hInputFileName in [ctInvalidFileHandle, ctInvalidOpenMode]) then ErrorCode (true);
 
-(*  Get file information. *)
-        SeekResult := FileSeek( hInputFileName, 0, ctSeekSet, NewPosition );
-    
-        j := 1;
-        k := 1;
-        while (fEOF = false) do
-        begin
-            counter := 0;
-            fillchar (Buffer[1], BufferSize, 0);
+        assign (hInputFile, InputFileName);
+        reset (hInputFile);
 
-            BlockReadResult := FileBlockRead(hInputFileName, Buffer[1], BufferSize);
-            if (BlockReadResult = ctReadWriteError) then ErrorCode(true);
+        Lines := 1;
+        Chars := 0;
+        Chars2 := 0;
+        while Not EndOfFile do
+        begin
+            EndOfFile := EOF(hInputFile);
+            fillchar(PrintString, sizeof(PrintString), ' ' );
             
-            for i := 0 to BufferSize do
-                if Buffer[1,i] <> 0 then counter := counter + 1;
-
-            i := 0;
-            l := 2;
-            while (i < BufferSize) do
+            readln (hInputFile, PrintString);
+            
+            if CharLimit = true then
             begin
-                Character := chr(Buffer[1,i]);
-                if j > 1 then l := 0;
-                if Character = #13 then
+                Chars := Chars + Length(PrintString);
+                if Chars > MaxChars then
                 begin
-                    BeginningOfLine[j] := k + l;
-                    TotalBytes := TotalBytes + k + l;
-                    j := j + 1;
-                    k := 0;
+                    counter := round(int(MaxChars - Chars2));
+                    delete(PrintString, counter, Length(PrintString) - counter);
+                    EndOfFile := true;
                 end;
-                i := i + 1;
-                k := k + 1;
+                Chars2 := Chars;
             end;
 
-            if counter = 1 then fEOF := true;
+(*  Here the program print the file. *)
+            
+            if Beginning = true then insert('$', PrintString, 1);
+            if NumberedLines = true then
+            begin
+                str(Lines, TemporaryNumber);
+                PrintString := concat(' ', TemporaryNumber, ' ', PrintString);
+            end;
+            if Finish = true then PrintString := concat(PrintString, '$' );
+            if PrintTAB = true then
+                for j := 1 to Length(PrintString) do
+                    if PrintString[j] = #9 then
+                    begin
+                        delete(PrintString, j, 1);
+                        insert('^I', PrintString, j);
+                    end;
 
+            writeln(PrintString);
+            
+            Lines := Lines + 1;
+            
+            if Lines > MaxLines then
+                EndOfFile := true;
         end;
-        BeginningOfLine[0] := 0;
-        BeginningOfLine[1] := BeginningOfLine[1] + 1;
-        BeginningOfLine[EndOfFile] := BeginningOfLine[EndOfFile] - 1;
-        EndOfFile := j - 1;
-        TotalBytes := TotalBytes - 1;
-
-(*  Here the program print n bytes. *)
-
-        if NumberBytes > 0 then
-        begin
-            i := 0;
-            Lines := 0;
-            Bytes := NumberBytes;
-
-            if NumberBytes < TotalBytes then
-            begin
-                while i < NumberBytes do
-                begin
-                    i := i + BeginningOfLine[Lines];
-                    Lines := Lines + 1;
-                end;
-                Lines := Lines - 1;
-                for i := 1 to Lines - 1 do
-                    Bytes := Bytes - BeginningOfLine[i];
-            end
-            else
-            begin
-                Lines := EndOfFile + 1;
-                Bytes := 0;
-            end;
-
-            for i := 0 to Lines do
-            begin
-                fillchar(OutputString, sizeof(OutputString), ' ' );
-                ReadLineFromFile (i, PositionsInOutputString , OutputString);
-                if i = Lines then PositionsInOutputString := Bytes;
-                write(chr(32));
-                for j := 1 to PositionsInOutputString do
-                    write(OutputString[j]);
-                writeln;
-            end;
 
 (*  Close file. *)
 
-            if (not FileClose(hInputFileName)) then ErrorCode(true);
-            exit;
-        end;
-
-(*  Here the program print n lines. *)
-
-        if NumberLines > 0 then
-        begin
-            if NumberLines > EndOfFile then NumberLines := EndOfFile;
-            for i := 1 to NumberLines do
-            begin
-                fillchar(OutputString, sizeof(OutputString), ' ' );
-                ReadLineFromFile (i, PositionsInOutputString , OutputString);
-                write(chr(32));
-                for j := 1 to PositionsInOutputString do
-                    write(OutputString[j]);
-                writeln;
-            end;
-
-(*  Close file. *)
-
-            if (not FileClose(hInputFileName)) then ErrorCode(true);
-            exit;
-        end;
+        CheatAPPEND(' ');
+        if (not FileClose(hInputFileName)) then ErrorCode(true);
+        close(hInputFile);
     end;
 end.
