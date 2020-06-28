@@ -46,14 +46,10 @@ Reverse lines characterwise.
 ## head
 Prints the first n lines (or n bytes) from a given file. If you doesn't use any
 parameters, it will print the first ten lines.
-> I'll change to the standard Pascal textfile read routine (sequential
-> read), it would be faster.
 
 ## tail
 Prints the last n lines (or n bytes) from a given file. If you doesn't use any
 parameters, it will print the last ten lines.
-> Unfortunately, I don't know if there's a way of speed up the file read,
-> 'cause Pascal textfiles read routines can't use seek functions.
 
 ## wc
 Counts how many bytes, characters, words and lines from a given file. If you
