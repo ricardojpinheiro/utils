@@ -12,36 +12,88 @@ program wc;
 {$i d:dos2file.inc}
 {$i d:fastwrit.inc}
 
-Const
-    TotalBufferSize = 767;
-    BufferSize = 511;
-    MaxLines = 18300;
-
-Type
-    TParameterVector = array [1..2] of string[80];
-    TOutputString = array[1..255] of char;
-    ASCII = set of 0..255;
-
 Var
     MSXDOSversion: TMSXDOSVersion;
-    ParameterVector: TParameterVector;
     InputFileName: TFileName;
-    Temporary: string[80];
-    TemporaryNumber: string[5];
-    hInputFileName, nDrive, BlockReadResult: byte;
-    NewPosition, NumberLines, NumberBytes, Bytes, Lines: integer;
-    EndOfFile, ValReturn, PositionsInOutputString: integer;
-    TotalBytes, TotalChars, TotalWords: real;
-    i, j, k, l, counter: integer;
-    TemporaryChar, PreviousChar, Character: char;
-    SeekResult, fEOF: boolean;
+    hInputFileName: byte;
+    hInputFile: text;
+    TotalLines, TotalBytes, TotalChars, TotalWords: real;
+    i, j, LengthPrintString: integer;
+    TemporaryChar, Character: char;
+    Flag: boolean;
+    Temporary, PrintString: string[255];
+
+(* Finds the last occurence of a char into a string. *)
+
+function LastPos(Character: char; Phrase: TString): integer;
+var
+    i: byte;
+    Found: boolean;
+begin
+    i := length(Phrase);
+    Found := false;
+    repeat
+        if Phrase[i] = Character then
+        begin
+            LastPos := i + 1;
+            Found := true;
+        end;
+        i := i - 1;
+    until Found = true;
+    if Not Found then LastPos := 0;
+end;
+
+(* Here we use the APPEND environment variable. *)
+
+procedure CheatAPPEND (FileName: TFileName);
+var
+    i, FirstTwoDotsFound, LastBackSlashFound: byte;
+    APPEND: string[7];
+    Path, Temporary: TFileName;
     Registers: TRegs;
+begin
 
-    Buffer: array[0..1, 0..TotalBufferSize] of byte;
-    BeginningOfLine: array[0..MaxLines] of integer;
-    OutputString: TOutputString;
+(* Initializing some variables... *)
 
-    NoPrint, Print, AllChars: ASCII;
+    fillchar(Path, sizeof(Path), ' ' );
+    fillchar(Temporary, sizeof(Temporary), ' ' );
+    APPEND[0] := 'A';   APPEND[1] := 'P';   APPEND[2] := 'P';
+    APPEND[3] := 'E';   APPEND[4] := 'N';   APPEND[5] := 'D';
+    APPEND[6] := #0;
+    
+(*  Sees if in the path there is a ':', used with drive letter. *)    
+    
+    FirstTwoDotsFound := Pos (chr(58), FileName);
+
+(*  If there is a two dots...  *)
+    
+    if FirstTwoDotsFound <> 0 then
+    begin
+    
+(*  Let me see where is the last backslash character...  *)
+
+        LastBackSlashFound := LastPos (chr(92), FileName);
+        Path := copy (FileName, 1, LastBackSlashFound);
+
+(*  Copy the path to the variable. *)
+        
+        for i := 1 to LastBackSlashFound - 1 do
+            Temporary[i - 1] := Path[i];
+        Temporary[LastBackSlashFound] := #0;
+        Path := Temporary;
+
+(*  Sets the APPEND environment variable. *)
+        
+        with Registers do
+        begin
+            B := sizeof (Path);
+            C := ctSetEnvironmentItem;
+            HL := addr (APPEND);
+            DE := addr (Path);
+        end;
+        MSXBDOS (Registers);
+    end;
+end;
 
 (* Here we use MSX-DOS 2 to do the error handling. *)
 
@@ -87,7 +139,7 @@ end;
 procedure WCVersion;
 begin
     clrscr;
-    fastwriteln('wc version 1.0'); 
+    fastwriteln('wc version 2.0'); 
     fastwriteln('Copyright (c) 2020 Brazilian MSX Crew.');
     fastwriteln('Some rights reserved.');
     writeln;
@@ -103,23 +155,14 @@ end;
 
 begin
 (*  Initializing some variables. *)
-    counter := 0;
-    nDrive := 0;
-    NewPosition := 0;
-    NumberLines := 10;
-    NumberBytes := 0;
     TotalBytes := 0.0;
     TotalChars := 0.0;
     TotalWords := 0.0;
-    fEOF := false;
+    TotalLines := 0.0;
+    Flag := false;
     Character := 'A';
     TemporaryChar := ' ';
-    PreviousChar := ' ';
-    AllChars := [0..255];
-    NoPrint := [0..31,127,255];
-    Print := AllChars - NoPrint;
     fillchar(InputFileName, sizeof(InputFileName), ' ' );
-    fillchar(TemporaryNumber, sizeof(TemporaryNumber), ' ' );
 
 (*  if are we not running in a MSX-DOS 2 machine, exits. 
 *   Else... Runs the program. *)
@@ -137,23 +180,15 @@ begin
 (* No parameters, command prints the help. *)
         if paramcount = 0 then WCHelp;
 
-(*  Clear variables. *)
-        fillchar(ParameterVector, sizeof(ParameterVector), ' ' );
-
 (*  Read parameters, and upcase them. *)
         for i := 1 to paramcount do
         begin
             Temporary := paramstr(i);
             for j := 1 to length(Temporary) do
                 Temporary[j] := upcase(Temporary[j]);
-            ParameterVector[i] := Temporary;
-        end;
-        
-        if paramcount > 1 then
-        begin
-            for i := 1 to 2 do
+
+            if paramcount > 1 then
             begin
-                Temporary := ParameterVector[i];
                 Character := Temporary[2];
                 if Temporary[1] = '/' then
                 begin
@@ -170,7 +205,10 @@ begin
         end;
 
 (*  The first parameter should be the file (or the standard input). *)
-        InputFileName := ParameterVector[1];
+        InputFileName := paramstr(1);
+
+(*  Cheats the APPEND environment variable. *)
+        CheatAPPEND(InputFileName);
 
 (*  Open file *)
         hInputFileName := FileOpen (InputFileName, 'r');
@@ -178,80 +216,59 @@ begin
 (*  if there is any problem regarding the opening process, show the error code. *)
         if (hInputFileName in [ctInvalidFileHandle, ctInvalidOpenMode]) then ErrorCode (true);
 
-(*  Get file information. *)
-        SeekResult := FileSeek( hInputFileName, 0, ctSeekSet, NewPosition );
-    
-        j := 1;
-        k := 1;
-        while (fEOF = false) do
+(*  Close file *)
+        if (not FileClose(hInputFileName)) then ErrorCode(true);
+
+(*  Open file again, as a text file *)
+        assign(hInputFile, InputFileName);
+        reset(hInputFile);
+
+(*  Finds how many bytes, characters and lines does the file has. *)
+        while not EOF(hInputFile) do
         begin
-            counter := 0;
-            fillchar (Buffer[1], BufferSize, 0);
+            fillchar(PrintString, sizeof(PrintString), ' ' );
+            readln(hInputFile, PrintString);
+            LengthPrintString := Length(PrintString);
+            if (Character = 'A') or (Character = 'L') then
+                TotalLines := TotalLines + 1;
 
-            BlockReadResult := FileBlockRead(hInputFileName, Buffer[1], BufferSize);
-            if (BlockReadResult = ctReadWriteError) then ErrorCode(true);
-            
-            for i := 0 to BufferSize do
-                if Buffer[1,i] <> 0 then counter := counter + 1;
+            if (Character = 'A') or (Character = 'C') then
+                TotalBytes := TotalBytes + LengthPrintString + 2;
+                
+            if (Character = 'A') or (Character = 'M') then
+                TotalChars := TotalChars + LengthPrintString;
 
-            i := 0;
-            l := 2;
-            while (i < BufferSize) do
-            begin
-                TemporaryChar := chr(Buffer[1,i]);
-                if j > 1 then l := 0;
-
-(*  Counts how many words the file has. *)
-
-                if ((ord(PreviousChar) in [65..90]) or
-                    (ord(PreviousChar) in [97..122])) and 
-                    (ord(TemporaryChar) in [13,32]) then TotalWords := TotalWords + 1;
-
-(*  Counts how many printable chars the file has. *)
-
-                if (ord(TemporaryChar) in Print) then TotalChars := TotalChars + 1;
-                if TemporaryChar = #13 then
+            if (Character = 'A') or (Character = 'W') then
+                for i := 1 to LengthPrintString do
                 begin
-                    BeginningOfLine[j] := k + l;
-                    TotalBytes := TotalBytes + k + l;
-                    
-(*  Counts how many bytes the file has. *)                    
-                    
-                    j := j + 1;
-                    k := 0;
+                    TemporaryChar := PrintString[i];
+                    if (ord(TemporaryChar) in [9,13,32]) then
+                        Flag := true
+                    else 
+                        if Flag = true then
+                        begin
+                            TotalWords := TotalWords + 1;
+                            flag := false;
+                        end;
                 end;
-                i := i + 1;
-                k := k + 1;
-                PreviousChar := TemporaryChar;
-            end;
-
-            if counter = 1 then fEOF := true;
-
         end;
-        BeginningOfLine[0] := 0;
-        BeginningOfLine[1] := BeginningOfLine[1] + 1;
-        BeginningOfLine[EndOfFile] := BeginningOfLine[EndOfFile] - 1;
-        EndOfFile := j - 1;
-        TotalBytes := TotalBytes - 1;
+        
+        CheatAPPEND(' ');
+        close(hInputFile);
 
 (*  C - Print how many bytes does the file has. *)
 (*  L - Print how many lines does the file has. *)
 (*  M - Print how many printable chars does the file has. *)
 (*  W - Print how many words does the file has. *)
 (*  A - Print everything about the file. *)
-
+ 
         case Character of
-            'C': writeln(TotalBytes:0:0, ' ', ParameterVector[1]);
-            'L': writeln(EndofFile, ' ', ParameterVector[1]);
-            'M': writeln(TotalChars:0:0, ' ', ParameterVector[1]);
-            'W': writeln(TotalWords:0:0, ' ', ParameterVector[1]);
-            'A': writeln(EndofFile, ' ', TotalWords:0:0, ' ', TotalBytes:0:0, ' ', ParameterVector[1]);
+            'C': writeln(TotalBytes:0:0, ' ', InputFileName);
+            'L': writeln(TotalLines:0:0, ' ', InputFileName);
+            'M': writeln(TotalChars:0:0, ' ', InputFileName);
+            'W': writeln(TotalWords:0:0, ' ', InputFileName);
+            'A': writeln(TotalLines:0:0, ' ', TotalWords:0:0, ' ', TotalBytes:0:0, ' ', InputFileName);
             else WCHelp;
         end;
-
-(*  Close file. *)
-
-        if (not FileClose(hInputFileName)) then ErrorCode(true);
-        exit;
     end;
 end.
