@@ -9,7 +9,6 @@ play with), they are in this repository and has the .INC extension in its names.
 
 Note: All the commands' parameters can be known using the /h parameter (from *h*elp).
 
-
 ## pwd
 Returns the current path. 
 > 'nuff said.
@@ -18,10 +17,6 @@ Returns the current path.
 Shuffles the lines fron a given file. I decided to do it first, because of
 the challenge and I can use most of the adquired knowledge to other
 utilities. 
-> Here I can change to standard Pascal textfile read routine (sequential read), only if I
-> sort all the chosen lines and read them in order. But first, I'll need to
-> know how many lines does the file have. BTW, I created a procedure that I
-> can "cheat" TP3, in order to use subdirectories.
 
 ## grep
 Search for patterns into a given file.
@@ -31,13 +26,12 @@ Search for patterns into a given file.
 
 ## cat
 Sends a file to the standard output.
-> I'll change to the standard Pascal textfile read routine (sequential
-> read), it would be faster.
 
 ## tac
 Sends a file in reverse order to the standard output.
 > Unfortunately, I don't know if there's a way of speed up the file read,
-> 'cause Pascal textfiles read routines can't use seek functions.
+> 'cause Pascal textfiles read routines can't use seek functions. So, I
+> won't change the code.
 
 ## rev
 Reverse lines characterwise.
@@ -54,8 +48,6 @@ parameters, it will print the last ten lines.
 ## wc
 Counts how many bytes, characters, words and lines from a given file. If you
 doesn't use any parameters, it will print bytes, words and lines.
-> I'll change to the standard Pascal textfile read routine (sequential
-> read), it would be faster.
 
 ## sleep
 ## ttime (time)
