@@ -1,6 +1,6 @@
-program cat;
+program less;
 {
-* Print lines on the standard output.
+* Print lines on the standard output with some nice uses.
 * }
 
 {$i d:types.inc}
@@ -9,6 +9,19 @@ program cat;
 {$i d:dos2err.inc}
 {$i d:dos2file.inc}
 {$i d:fastwrit.inc}
+
+const
+  UpArrow = #30;
+  DownArrow = #31;
+  LeftArrow = #28;
+  RightArrow = #29;
+  ESC = #27;
+  Enter = #13;
+  Null = #00;
+  Select = #24; 
+  Home = #11;
+  Ins = #18;
+  Del = #127;
 
 Type
     TParameterVector = array [1..2] of string[80];
@@ -118,21 +131,16 @@ end;
 
 (*  Command help.*)
 
-procedure CatHelp;
+procedure LessHelp;
 begin
     clrscr;
-    fastwriteln('Usage: cat <file> <parameters>.');
+    fastwriteln('Usage: less <file>.');
     fastwriteln('Print file on the standard output.');
     writeln;
     fastwriteln('File: Text file.');
     writeln;
     fastwriteln('Parameters: ');
     fastwriteln('/h - Display this help and exit.');
-    fastwriteln('/b - Display $ at beginning of each');
-    fastwriteln('line.');
-    fastwriteln('/e - Display $ at end of each line.');
-    fastwriteln('/n - Number all output lines.');
-    fastwriteln('/t - Display TAB characters as ^I.');
     fastwriteln('/v - Output version information & exit.');
     writeln;
     halt;
@@ -140,10 +148,10 @@ end;
 
 (*  Command version.*)
 
-procedure CatVersion;
+procedure LessVersion;
 begin
     clrscr;
-    fastwriteln('cat version 2.0'); 
+    fastwriteln('less version 1.0'); 
     fastwriteln('Copyright (c) 2020 Brazilian MSX Crew.');
     fastwriteln('Some rights reserved.');
     writeln;
@@ -180,7 +188,7 @@ begin
     begin
 
 (* No parameters, command prints the help. *)
-        if paramcount = 0 then CatHelp;
+        if paramcount = 0 then LessHelp;
 
 (*  Clear variables. *)
         fillchar(ParameterVector, sizeof(ParameterVector), ' ' );
@@ -209,10 +217,10 @@ begin
                     case Character of
                         'B': Beginning := true;
                         'E': Finish := true;
-                        'H': CatHelp;
+                        'H': LessHelp;
                         'N': NumberedLines := true;
                         'T': PrintTab := true;
-                        'V': CatVersion;
+                        'V': LessVersion;
                     end;
                 end;
             end;

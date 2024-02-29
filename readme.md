@@ -14,9 +14,13 @@ Returns the current path.
 > 'nuff said.
 
 ## shuf
-Shuffles the lines fron a given file. 
-> I decided to do it first, because of the challenge and I can use most 
-> of the adquired knowledge into other utilities. 
+Shuffles the lines fron a given file. I decided to do it first, because of
+the challenge and I can use most of the adquired knowledge to other
+utilities. 
+> Here I can change to standard Pascal textfile read routine (sequential read), only if I
+> sort all the chosen lines and read them in order. But first, I'll need to
+> know how many lines does the file have. BTW, I created a procedure that I
+> can "cheat" TP3, in order to use subdirectories.
 
 ## grep
 Search for patterns into a given file.
@@ -30,8 +34,7 @@ Sends a file to the standard output.
 ## tac
 Sends a file in reverse order to the standard output.
 > Unfortunately, I don't know if there's a way of speed up the file read,
-> 'cause Pascal textfiles read routines can't use seek functions. So, I
-> won't change the code.
+> 'cause Pascal textfiles read routines can't use seek functions.
 
 ## rev
 Reverse lines characterwise.
@@ -47,13 +50,13 @@ parameters, it will print the last ten lines.
 
 ## wc
 Counts how many bytes, characters, words and lines from a given file. If you
-doesn't use any parameters, it will print lines, words and bytes.
+doesn't use any parameters, it will print bytes, words and lines.
+> I'll change to the standard Pascal textfile read routine (sequential
+> read), it would be faster.
 
 ## sleep
 ## ttime (time)
 ## less
-A file perusal filter for crt viewing, more efficient than more, for sure.
-
 ## dos2unix
 ## unix2dos
 

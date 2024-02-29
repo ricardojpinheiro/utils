@@ -1,0 +1,38 @@
+- Paginador
+	- capaz de imprimir na SCREEN 0.
+		- Detectar 40 ou 80 colunas.
+			- Nas 40 colunas, vou precisar inverter os caracteres como resultado da busca (VPOKE).
+			- Nas 80 colunas, entrar logo no modo "estendido".
+				- Vou precisar de uma rotina de scroll, ou fabricar o scroll.
+	- Detectar mapper.
+		- Ler os blocos de texto e colocar na página 2 (ou 3) (byte absolute).
+			- Chavear entre os bancos de memória pra salvar o texto, e saber qtos bancos foram usados. Marcar como ponteiro.
+			- Na hora de compilar, travar p/ n invadir aquela região de memória.
+	- Busca de texto.
+		- Algorimo Boyer-Moore (já usado no GREP).
+	- Navegação.
+		- e, j, ^E, ^N, ENTER - 1 linha pra frente.
+		- y, k, ^Y, ^K, ^P - 1 linha pra trás.
+		- z, f, ^F, ^V, ESPACO - 1 tela pra frente.
+		- w, b, ^B - 1 tela pra trás.
+		- d, ^D - Meia tela pra cima.
+		- u, ^U - Meia tela pra trás.
+		- Direita - Meia tela pra direita.
+		- Esquerda - Meia tela pra esquerda.
+		- r, ^R, ^L - Redesenha a tela.
+		- g - Primeira linha.
+		- G - Última linha.
+		- h - Ajuda dentro do programa.
+		
+	- Busca.
+		- / <padrão> - Procura pra frente.
+		- ? <padrão> - Procura pra trás.
+		- & <padrão> - Redesenha, somente as linhas que contém o padrão.
+		- ^N <padrão> - Redesenha, somente as linhas que não contém o padrão.
+		- n - Continua a busca pra frente.
+		- N - Continua a busca pra trás.	
+
+	- Parâmetros.
+		/? - Help com isso tudo explicado.
+		/v - Versão.
+	

@@ -1,0 +1,100 @@
+aipn-auth       3833/udp                # AIPN LS Authentication
+opnet-smp       3433/udp                # OPNET Service Management Platform
+sabams          2760/udp                # Saba MS
+entextxid       12000/udp               # IBM Enterprise Extender SNA XID Exchange
+adobeserver-2   1103/udp                # ADOBE SERVER 2
+http-rpc-epmap  593/udp                 # HTTP RPC Ep Map
+samsung-unidex  4010/tcp                # Samsung Unidex
+http-wmap       8990/udp                # webmail HTTP service
+rdb-dbs-disp    1571/udp                # Oracle Remote Data Base
+prolink         1678/udp                # prolink
+brlp-1          4102/tcp                # Braille protocol
+datalens        2229/udp                # DataLens Service
+igi-lm          1404/udp                # Infinite Graphics License Manager
+acap            674/tcp
+ipx             213/tcp                         # IPX
+msfw-s-storage  2172/tcp                # MS Firewall SecureStorage
+vocaltec-hos    25793/tcp               # Vocaltec Address Server
+trusted-web     3011/udp                # Trusted Web
+cisco-sys       132/tcp                 # cisco SYSMAINT
+bmpp            632/udp                 # bmpp
+apocd           3809/udp                # Java Desktop System Configuration Agent
+haipe-otnk      3769/udp                # HAIPE Network Keying
+ngr-t           1528/udp                # NGR transport for mobile ad-hoc networks
+udp-sr-port     1624/tcp                # udp-sr-port
+saft            487/udp                         # Simple Asynchronous File Transfer
+sdo-tls         3896/udp                # Simple Distributed Objects over TLS
+netcomm2        1676/udp                # netcomm2
+nuts_dem        4132/tcp   nuts-dem     # NUTS Daemon
+xmpv7           7430/udp                # OpenView DM xmpv7 api pipe
+registrar       1712/tcp                # resource monitoring service
+talikaserver    22763/udp               # Talika Main Server
+fjippol-swrly   2747/udp                #
+donnyworld      1821/udp                # donnyworld
+rbt-smc         7870/tcp                # Riverbed Steelhead Mobile Service
+hp-device-disc  3329/udp                # HP Device Disc
+bmc-reporting   4568/tcp                # BMC Reporting
+can-dch         1919/tcp                # IBM Tivoli Directory Service - DCH
+quartus-tcl     2589/udp                # quartus tcl
+patrol-mq-gm    2664/tcp                # Patrol for MQ GM
+rcst            3467/tcp                # RCST
+vrtp            2255/tcp                # VRTP - ViRtue Transfer Protocol
+optilogic       2435/udp                # OptiLogic
+jibe-eb         3777/udp                # Jibe EdgeBurst
+irdg-post       2632/tcp                # IRdg Post
+vaultbase       1771/tcp                # vaultbase
+rtsp-alt        8554/udp                # RTSP Alternate (see port 554)
+hip-nat-t       10500/udp               # HIP NAT-traversal
+nvc             8711/tcp                # Nuance Voice Control
+l3-exprt        2840/udp                # l3-exprt
+lorica-in       4080/tcp                # Lorica inside facing
+elanlm          4346/tcp                # ELAN LM
+www-dev         2784/tcp                # world wide web - development
+sicct-sdp       4742/udp                # SICCT Service Discovery Protocol
+ehs-ssl         4536/udp                # Event Heap Server SSL
+XmlIpcRegSvc    9092/udp                # Xml-Ipc Server Reg
+onehome-remote  2198/udp                # OneHome Remote Access
+nettest         4138/tcp                # nettest
+visinet-gui     3601/tcp                # Visinet Gui
+proactivesrvr   2722/udp                # Proactive Server
+ideafarm-panic  903/udp                 # self documenting Panic Door: send 0x00 for info
+knet-cmp        157/udp                 # KNET/VM Command/Message Protocol
+lipsinc1        1969/udp                # LIPSinc 1
+jeol-nsdtp-3    6243/tcp                # JEOL Network Services Data Transport Protocol 3
+cnap            7262/udp                # Calypso Network Access Protocol
+at-echo         204/udp
+rmtserver       2416/udp                # RMT Server
+beeyond-media   1943/udp                # Beeyond Media
+gbs-smp         3762/tcp                # GBS SnapMail Protocol
+nettgain-nms    1879/udp                # NettGain NMS
+pd-admin        9597/tcp                # PD Administration
+suncacao-rmi    11163/udp               # sun cacao rmi registry access point
+senomix07       8058/tcp                # Senomix Timesheets Client [1 year assignment]
+apani3          9162/tcp                # apani3
+restconf-ch-tls 4336/tcp                # RESTCONF Call Home (TLS) 
+syam-smc        3895/udp                # SyAm SMC Service Port
+zigbee-ips      17756/udp               # ZigBee IP Transport Secure Service
+pmdmgr          7426/tcp                # OpenView DM Postmaster Manager
+pentbox-sim     6817/tcp                # PenTBox Secure IM Protocol
+edbsrvr         12010/tcp               # ElevateDB Server
+# are included, only the more common ones.
+nati-vi-server  3363/udp                # NATI Vi Server
+kpasswd         464/tcp         kpwd            # Kerberos "passwd"
+xpl             3865/tcp                # xpl automation protocol
+smntubootstrap  2613/udp                # SMNTUBootstrap
+uuidgen         697/udp                 # UUIDGEN
+ace-client      2334/udp                # ACE Client Auth
+exoconfig       26487/udp               # EXOconfig
+vcscmd          14150/tcp               # Veritas Cluster Server Command Server
+cardbox-http    3106/udp                # Cardbox HTTP
+targus-getdata2 5202/udp                # TARGUS GetData 2
+eye2eye         1948/udp                # eye2eye
+dn6-smm-red     196/tcp                 # DNSIX Session Mgt Module Audit Redir
+svnetworks      2973/tcp                # SV Networks
+item            3848/tcp                # IT Environmental Monitor
+ctt-broker      1932/tcp                # CTT Broker
+zieto-sock      4072/tcp                # Zieto Socket Communications
+radwiz-nms-srv  2736/tcp                # RADWIZ NMS SRV
+dxspider        8873/tcp                # dxspider linking protocol
+nta-us          7545/udp                # FlowAnalyzer UtilityServer
+vopied          13783/udp                       # VOPIED Protocol
