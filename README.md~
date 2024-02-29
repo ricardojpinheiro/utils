@@ -51,16 +51,11 @@ doesn't use any parameters, it will print lines, words and bytes.
 
 ## sleep
 ## ttime (time)
+## less
+A file perusal filter for crt viewing, more efficient than more, for sure.
 
 ## dos2unix
 ## unix2dos
-## drvhelp
-## devhelp
-## maphelp
-## lsblk
-## zeroaloc
-Sets reduced allocation information mode for any drives in Nextor. Faster
-and more useful than RALLOC.
 
 [Here you can download a ZIP package with all COM files.](https://github.com/ricardojpinheiro/utils/blob/master/utils.zip)
 
@@ -69,7 +64,7 @@ All of them demands optimization, in order to use bigger files in a faster
 way. I'll do it in the future. 
 
 # Version notes.
-(c) 2020-2024 Brazilian MSX Crew. Some rights reserved, but it's released due to
+(c) 2020 Brazilian MSX Crew. Some rights reserved, but it's released due to
 the GPL license, so... You know. Suggestions, corrections and upgrades are
 welcome. But if you think that *all my work is garbage and I should learn Z80
 Assembly because you think it's better*... GTH (Go To Hell). BTW, I'd send
