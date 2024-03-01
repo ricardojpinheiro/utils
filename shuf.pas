@@ -122,8 +122,8 @@ end;
 
 procedure quicksort(var Vector: TRandomLines; Beginning, Finish: integer);
 var 
-	i, j, Middle, Pivot, Aux: integer;
-	
+    i, j, Middle, Pivot, Aux: integer;
+    
 begin
   i := Beginning;
   j := Finish;

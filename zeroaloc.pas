@@ -7,10 +7,10 @@ program zeroaloc;
 
 var
 	DriveStatus: 	TDriveStatus;
-	Status: 		TTinyString;
 	Parameters:		TTinyString;
-	i, j:			byte;
+	i:				byte;
 	c:				char;
+	j, k, Result:	integer;
 
 procedure CommandLine (KindOf: byte);
 (*
@@ -27,37 +27,40 @@ begin
 				Writeln(' / /  __/ | | (_) | (_| | | (_) | (__ ');
 				Writeln('/___\___|_|  \___/ \__,_|_|\___/ \___|');
 				writeln;
-                Writeln('Version 0.1 - Copyright (c) 2024 Brazilian MSX Crew.');
-                Writeln('Some rights reserved (not many!).');
+                Writeln('Version 0.1 - Copyright (c) 2024 by');
+                Writeln('Brazilian MSX Crew. Some rights');
+                Writeln('reserved (not many!).');
                 writeln;
-                Writeln('This is a utility which is a improved RALLOC.COM.	');
-                Writeln('And we hope all useful options are used here.		');
+                Writeln('This is a improved RALLOC.COM, and we');
+                Writeln('hope all useful options are used here.');
                 writeln;
-                Writeln('It''s licensed under the GPLv3+ license. Yep, free software. You are free');
-                Writeln('to change and redistribute it. But don''t ask me about any warranties...');
-                Writeln('Use it at your own risk. http://gnu.org/licenses/gpl.html');
+                Writeln('It''s licensed under the GPLv3+ license.');
+                writeln('Yep, free software. You are free to');
+                Writeln('change and redistribute it. But don''t');
+                writeln('ask me about any warranties... Use it ');
+                writeln('at your own risk. ');
+                Writeln('http://gnu.org/licenses/gpl.html');
                 writeln;
             end;
         2: begin (* Help *)
                 Writeln('Usage: zeroaloc <parameters>');
-                Writeln('Utility for Nextor that get/set reduced allocation information mode.');
-                writeln;
-                writeln('If you run without any parameters, it shows current configuration.');
+                Writeln('Get/set reduced allocation info mode.');
                 writeln;
                 Writeln('Parameters: ');
-				Writeln('/l <A><mode> ... <H><mode>	- Sets each drive''s mode, where:');
-				Writeln('Example: A+: Turns on zero allocation information for drive A.');
-				Writeln('Example: E-: Turns off zero allocation information for drive E.');
-				writeln('So... /l A+ B- E+ H- turns on drives A and E, and turns off drives B and H.');
+                writeln('None: Shows current configuration.');
+				Writeln('/l <A><+/->...<H><+/-> - Sets drive''s mode:');
+				Writeln('Example: A+: Turns on for drive A.');
+				Writeln('Example: E-: Turns off for drive E.');
+				writeln('/l A+ B-: turns on drive A and turns off drive B.');
                 writeln;
-                Writeln('/d <number>	- Sets each drive''s mode, using a decimal number.');
-                Writeln('Example: /d 244: Turns on for drives A, B, C, D and F.');
+                Writeln('/d <n> - Sets each drive''s mode (dec).');
+                Writeln('/d 56: Turns on drives C, D, E.');
                 writeln;
-                Writeln('/b <number>	- Sets each drive''s mode, using a binary number.');
-                Writeln('Example: /b 11100100: Turns on for drives A, B, C and F.');
+                Writeln('/b <n> - Sets each drive''s mode (bin).');
+                Writeln('/b 11001000: Turns on drives A, B, E.');
 				writeln;
-                Writeln('/h		- Show this help text and exit.');
-                Writeln('/v		- Output version information and exit.');
+                Writeln('/h	- Show this help text and exit.');
+                Writeln('/v	- Show version info and exit.');
                 writeln;
             end;
         end;
@@ -88,21 +91,16 @@ end;
 procedure ShowRALLOCStatus;
 begin
 	FillChar (DriveStatus, sizeof(DriveStatus), 0);
-	FillChar (Status, sizeof(Status), chr(32));
 	
 	GetRALLOCStatus (DriveStatus);
 	
 	writeln('The following drives are in reduced allocation information mode:');
 	
-	for i := 0 to 7 do
-		if DriveStatus[i] = 1 then
-			write (chr(i + 65), ': ');
+	for i := 7 downto 0 do
+		if DriveStatus[7 - i] = 1 then
+			write (chr((7 - i) + 65), ': ');
 
 	writeln;
-end;
-
-procedure DefineRALLOCStatus (KindOf: byte);
-begin
 end;
 
 BEGIN
@@ -110,11 +108,11 @@ BEGIN
 
 	case DOSVEREnhancedDetection of
 		0: 	begin
-				writeln ('MSX-DOS 1 detected. ZEROALOC won''t run. Sorry.');
+				writeln ('MSX-DOS 1 detected. ZEROALOC won''t run.');
 				halt;
 			end;
 		1:  begin
-				writeln ('MSX-DOS 2 detected. ZEROALOC won''t run. Sorry.');
+				writeln ('MSX-DOS 2 detected. ZEROALOC won''t run.');
 				halt;
 			end;
 	end;
@@ -134,18 +132,44 @@ BEGIN
 				if Parameters[1] = '/' then
 				begin
 					delete(Parameters, 1, 2);
-(*  Parameters. *)
+				(*  Parameters. *)
 					case c of
 						'V': CommandLine(1);		(* Help 	*)
 						'H': CommandLine(2);		(* Version 	*)
 						'L': 	begin				(* Set using letters. *)
-									DefineRALLOCStatus (1);
+									GetRALLOCStatus ( DriveStatus );
+									
+									for i := 2 to paramcount do
+									begin
+										FillChar ( Parameters, Length(Parameters), chr(32));
+										Parameters := paramstr(i);
+
+										j := 7 - (ord(upcase(Parameters[1])) - 65);
+										
+										if Parameters[2] = '+' then
+											DriveStatus[j] := 1
+										else
+											DriveStatus[j] := 0;
+									end;
+									SetRALLOCStatus (DriveStatus);
 								end;
+								
 						'D': 	begin				(* Set using decimal number. *)
-									DefineRALLOCStatus (2);
+									Parameters := paramstr(2);
+									Val (Parameters, k, Result);
+									Decimal2Binary (k, DriveStatus);
+									SetRALLOCStatus (DriveStatus); 
 								end;
+								
 						'B': 	begin				(* Set using binary number. *)
-									DefineRALLOCStatus (3);
+									Parameters := paramstr(2);
+									for i := 7 downto 0 do
+									begin
+										c := Parameters[i + 1];
+										Val (c, k, Result);
+										DriveStatus[7 - i] := k;
+									end;
+									SetRALLOCStatus (DriveStatus);
 								end;
 					end;
 				end;
