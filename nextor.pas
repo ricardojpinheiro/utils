@@ -76,6 +76,13 @@ const
 type
     TBinNumber  = array [0..7] of byte;
     TDriveStatus = TBinNumber;
+
+    TDriveLetter = record
+        PhysicalDrive: char;
+        DriveStatus, DriverSlot, DriverSegment,
+        RelativeDriveNumber, DeviceIndex, LUN: byte;
+        FirstDeviceSectorNumber: real;
+    end;
     
     TDeviceDriver = record
         DriverIndex, DriverSlot, DriverSegment, DriveLettersAtBootTime: byte;
@@ -83,13 +90,6 @@ type
         NextorOrMSXDOSDriver, HasDRVCONFIG, DeviceOrDrive, 
         DriverMainNumber, DriverSecondaryNumber, DriverRevisionNumber: byte;
         DriverName: string[32];
-    end;
-
-    TDriveLetter = record
-        PhysicalDrive: char;
-        DriveStatus, DriverSlot, DriverSegment,
-        RelativeDriveNumber, DeviceIndex, LUN: byte;
-        FirstDeviceSectorNumber: real;
     end;
     
     TDevicePartition = record
@@ -142,39 +142,39 @@ end;
 
 function Power (x, y: integer): integer;
 var
-	i, j: byte;
+    i, j: byte;
 begin
-	j := 1;
-	for i := 1 to y do
-		j := j * x;
-	Power := j;
+    j := 1;
+    for i := 1 to y do
+        j := j * x;
+    Power := j;
 end;
 
 function Binary2Decimal(Binary: TBinNumber):integer;
 var
-	i: byte;
-	x: integer;
+    i: byte;
+    x: integer;
 begin
-	x := 0;
-	for i := 0 to 7 do
-		x := x + Binary[i] * Power(2, 7 - i);
-	Binary2Decimal := x;
+    x := 0;
+    for i := 0 to 7 do
+        x := x + Binary[i] * Power(2, 7 - i);
+    Binary2Decimal := x;
 end;
 
 procedure Decimal2Binary(x: integer; var Binary: TBinNumber);
 var
-	i: byte;
+    i: byte;
 begin
-	i := 0;
-	FillChar(Binary, sizeof(Binary), 0);
-	repeat
-		if (x mod 2 = 0) then
-			Binary[i] := 0
-		else
-			Binary[i] := 1;
-		x := x div 2;
-		i := i + 1;
-	until x = 0;
+    i := 0;
+    FillChar(Binary, sizeof(Binary), 0);
+    repeat
+        if (x mod 2 = 0) then
+            Binary[i] := 0
+        else
+            Binary[i] := 1;
+        x := x div 2;
+        i := i + 1;
+    until x = 0;
 end;
 
 procedure GetRALLOCStatus ( var DriveRalloc: TDriveStatus );

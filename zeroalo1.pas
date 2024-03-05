@@ -1,36 +1,75 @@
-(*<dos.inc> CopyLeft (c) since 1995 by PopolonY2k. *)
+(*
+*  zeroalo1.inc - Pascal library which is used with the zeroaloc utility;
+*  Here we have some routines which are accessory to the program.
+*)
 
-(* BDOS/MSXDOS functions list - Official function names *)
+const
+    ctRALLOC                        =   $75; (* RALLOC routine.               *)
+    ctGetMSXDOSVersionNumber        =   $6F;
+    
+    ctGetRallocStatus               =   $00;
+    ctSetRallocStatus               =   $01;
 
-Const
-        ctOpen                          = $0F;
-    ctClose                         = $10;
-    ctDelete                        = $13;
-    ctCreate                        = $16;
-        ctRename                        = $17;
-    ctFileSize                      = $23;    
-        ctOpenFileHandle                = $43;
-    ctCreateFileHandle              = $44;
-    ctCloseFileHandle               = $45;
-    ctEnsureFileHandle              = $46;
-        ctDuplicateFileHandle           = $47;
-        ctReadFromFileHandle            = $48;
-    ctWriteToFileHandle             = $49;
-        ctMoveFileHandlePointer         = $4A;
-    ctMoveFileHandle                = $54;
-        ctGetPreviousErrorCode          = $65;
-        ctExplainErrorCode              = $66;
-    ctGetEnvironmentItem            = $6B;
-    ctSetEnvironmentItem            = $6C;
-    ctGetMSXDOSVersionNumber        = $6F;
-
-Type
-    TMSXDOSVersion = Record
+type
+    TBinNumber      = array [0..7] of byte;
+    TDriveStatus    = TBinNumber;
+    TTinyString     = String[40];              { String 40 byte size }
+    
+    TMSXDOSVersion  = Record
         nKernelMajor,
         nKernelMinor,
         nSystemMajor,
         nSystemMinor    : Byte;
+    End;    
+
+    TRegs           = Record
+        IX       : Integer;             { 16Bit index registers }
+        IY       : Integer;
+
+        Case Byte Of    { 8Bit registers and 16Bit registers - WORD_REGS }
+            0 : ( C,B,E,D,L,H,F,A  : Byte );      { 8bit registers  }
+            1 : ( BC,DE,HL,AF      : Integer );   { 16bit registers }
     End;
+
+var
+    Regs:   TRegs;
+
+function Power (x, y: integer): integer;
+var
+    i, j: byte;
+begin
+    j := 1;
+    for i := 1 to y do
+        j := j * x;
+    Power := j;
+end;
+
+function Binary2Decimal(Binary: TBinNumber):integer;
+var
+    i: byte;
+    x: integer;
+begin
+    x := 0;
+    for i := 0 to 7 do
+        x := x + Binary[i] * Power(2, 7 - i);
+    Binary2Decimal := x;
+end;
+
+procedure Decimal2Binary(x: integer; var Binary: TBinNumber);
+var
+    i: byte;
+begin
+    i := 0;
+    FillChar(Binary, sizeof(Binary), 0);
+    repeat
+        if (x mod 2 = 0) then
+            Binary[i] := 0
+        else
+            Binary[i] := 1;
+        x := x div 2;
+        i := i + 1;
+    until x = 0;
+end;
 
 Procedure MSXBDOS( Var regs : TRegs );
 Var
@@ -86,8 +125,6 @@ Begin
 End;
 
 Procedure GetMSXDOSVersion( Var version : TMSXDOSVersion );
-Var
-       regs  : TRegs;
 Begin
   FillChar( regs, SizeOf( regs ), 0 );
   regs.C:= ctGetMSXDOSVersionNumber;
@@ -102,3 +139,27 @@ Begin
       nSystemMinor := regs.E;
     End;
 End;
+
+procedure GetRALLOCStatus ( var DriveRalloc: TDriveStatus );
+begin
+    FillChar ( regs, SizeOf( regs ), 0 );
+    FillChar ( DriveRalloc, SizeOf ( DriveRalloc ), 0 );
+    
+    regs.A := ctGetRallocStatus;
+    regs.C := ctRALLOC;
+    
+    MSXBDOS ( regs ); 
+    Decimal2Binary (regs.HL, DriveRalloc); 
+end;
+
+procedure SetRALLOCStatus ( var DriveRalloc: TDriveStatus );
+begin
+    FillChar( regs, SizeOf( regs ), 0 );
+     
+    regs.A := ctSetRallocStatus;
+    regs.C := ctRALLOC;
+    regs.HL := Binary2Decimal (DriveRalloc);
+
+    MSXBDOS ( regs ); 
+end;    
+    

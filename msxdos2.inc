@@ -1,14 +1,14 @@
 (*<msxdos2.pas> CopyLeft (c) since 1995 by PopolonY2k. *)
 Const
     ctOpenFileHandle                = $43;
-	ctCreateFileHandle              = $44;
-	ctCloseFileHandle               = $45;
-	ctEnsureFileHandle              = $46;
+    ctCreateFileHandle              = $44;
+    ctCloseFileHandle               = $45;
+    ctEnsureFileHandle              = $46;
     ctDuplicateFileHandle           = $47;
     ctReadFromFileHandle            = $48;
-	ctWriteToFileHandle             = $49;
+    ctWriteToFileHandle             = $49;
     ctMoveFileHandlePointer         = $4A;
-	ctMoveFileHandle                = $54;
+    ctMoveFileHandle                = $54;
     ctGetPreviousErrorCode          = $65;
     ctExplainErrorCode              = $66;
     ctGetMSXDOSVersionNumber        = $6F;

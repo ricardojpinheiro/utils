@@ -24,7 +24,8 @@
  * http://map.grauw.nl/resources/dos2_functioncalls.php
  *)
 
-Const     ctFindFirstEntry                = $40;
+Const
+          ctFindFirstEntry                = $40;
           ctFindNextEntry                 = $41;
           ctFindNewEntry                  = $42;
           ctOpenFileHandle                = $43;

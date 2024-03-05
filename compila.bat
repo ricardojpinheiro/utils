@@ -1,3 +1,3 @@
 d:
-c:\tp33f\tp33f.com zeroaloc.pas /rzeroaloc.err 
-d:zeroaloc.com
+c:\tp33f\tp33f.com lsblk.pas /rlsblk.err 
+d:lsblk.com
