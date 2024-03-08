@@ -177,6 +177,15 @@ begin
     until x = 0;
 end;
 
+function SizeBytes (Major, Minor: Integer): real;
+var
+	MinorX, MajorX: real;
+begin
+	MajorX := Major * 128;
+	MinorX := Minor / 512;
+	SizeBytes := (MajorX + MinorX) * 512;
+end;
+
 procedure GetRALLOCStatus ( var DriveRalloc: TDriveStatus );
 begin
     FillChar ( regs, SizeOf( regs ), 0 );
@@ -200,14 +209,12 @@ begin
     MSXBDOS ( regs ); 
 end;
 
-function GetDriveSpaceInfo ( DriveLetter: char; FreeOrTotalSpace: boolean): real;
+function GetDriveSpaceInfo ( DriveLetter: char; FreeOrTotalSpace: byte): real;
 var
     temp1, temp2: real;
 
 begin
     FillChar( regs, SizeOf( regs ), 0 );
-    FillChar( temp1, SizeOf( temp1 ), 0 );
-    FillChar( temp2, SizeOf( temp2 ), 0 );
 
     (* Nextor routine. *)
     regs.C := ctDSPACE;
@@ -216,23 +223,29 @@ begin
     regs.E := ord (DriveLetter) - 64;
     
     (* Free space or total space. *)
-    if FreeOrTotalSpace then
-        regs.A := $00
-    else
-        regs.A := $01;
+    regs.A := FreeOrTotalSpace;
     
     MSXBDOS ( regs );
     
     (* Little hack to get *)
+{
     if regs.DE < 0 then
-        temp1 := -1 * regs.DE;
+        temp1 := -1 * regs.DE
+	else
+		temp1 := regs.DE;
     
     if regs.HL < 0 then
-        temp2 := -1 * regs.HL;
+        temp2 := -1 * regs.HL
+	else
+		temp2 := regs.HL;
+}
 
-    temp1 := 65536 - temp1;
-    temp2 := 65536 * temp2;
-    GetDriveSpaceInfo := temp1 + temp2;
+	temp1 := regs.HL;
+	temp2 := regs.DE;
+
+	writeln(temp1:0:0, ' ', temp2:0:0);
+
+    GetDriveSpaceInfo := SizeBytes(round(int(temp1)), round(int(temp2)));
 end;
 
 function GetLockStatus ( DriveLetter: char): byte;
