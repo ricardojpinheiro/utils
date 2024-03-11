@@ -88,9 +88,9 @@ begin
 	writeln (' Which drive do you want to get info? ');
 	Character := upcase(readkey);
 	writeln (' Free space in drive ', Character, ': ', 
-				(GetDriveSpaceInfo (Character, ctGetTotalSpace)):0:0 , ' kb.');
+				(GetDriveSpaceInfo (Character, ctGetFreeSpace)):2:2 , ' kb.');
 	writeln (' Total space in drive ', Character, ': ', 
-				(GetDriveSpaceInfo (Character, ctGetFreeSpace)):0:0 , ' Kb.');
+				(GetDriveSpaceInfo (Character, ctGetTotalSpace)):2:2 , ' Kb.');
 end;
 
 procedure LOCKExample;
@@ -257,8 +257,8 @@ begin
 		GetInfo := true;
 		
 		(* Primary and Extended Partition. *)
-		PrimaryPartition 	:= 1;
-		ExtendedPartition 	:= 0;
+		PrimaryPartition 	:= 2;
+		ExtendedPartition 	:= 1;
 
 		writeln (	' Slot: ', DriverSlot, 
 					' Segment: ', DriverSegment, 

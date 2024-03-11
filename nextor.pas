@@ -178,12 +178,8 @@ begin
 end;
 
 function SizeBytes (Major, Minor: Integer): real;
-var
-	MinorX, MajorX: real;
 begin
-	MajorX := Major * 128;
-	MinorX := Minor / 512;
-	SizeBytes := (MajorX + MinorX) * 512;
+	SizeBytes := ((Major * 128) + (Minor / 512)) * 512;
 end;
 
 procedure GetRALLOCStatus ( var DriveRalloc: TDriveStatus );
@@ -226,26 +222,11 @@ begin
     regs.A := FreeOrTotalSpace;
     
     MSXBDOS ( regs );
-    
-    (* Little hack to get *)
-{
-    if regs.DE < 0 then
-        temp1 := -1 * regs.DE
-	else
-		temp1 := regs.DE;
-    
-    if regs.HL < 0 then
-        temp2 := -1 * regs.HL
-	else
-		temp2 := regs.HL;
-}
 
-	temp1 := regs.HL;
-	temp2 := regs.DE;
-
-	writeln(temp1:0:0, ' ', temp2:0:0);
-
-    GetDriveSpaceInfo := SizeBytes(round(int(temp1)), round(int(temp2)));
+	temp1 := maxint + regs.DE;
+	temp2 := maxint + regs.HL;
+	
+    GetDriveSpaceInfo := temp1 + temp2;
 end;
 
 function GetLockStatus ( DriveLetter: char): byte;
@@ -265,7 +246,6 @@ begin
 
     (* Current lock status. *)
     GetLockStatus := regs.B;
-
 end;
 
 function SetLockStatus ( DriveLetter: char; LockOrUnlock: boolean): byte;
@@ -346,7 +326,7 @@ procedure GetInfoDriveLetter (var DriveLetter: TDriveLetter);
 var
     Data: string[64];
     i: byte;
-    
+
 begin
     FillChar( regs, SizeOf( regs ), 0 );
 
@@ -371,10 +351,11 @@ begin
         RelativeDriveNumber     := Mem[regs.HL + 3];
         DeviceIndex             := Mem[regs.HL + 4];
         LUN                     := Mem[regs.HL + 5];
-        FirstDeviceSectorNumber := 8388608 * Mem[regs.HL + 9] +
-                                     32768 * Mem[regs.HL + 8] +
-                                       128 * Mem[regs.HL + 7] +
-                                             Mem[regs.HL + 6];
+
+        FirstDeviceSectorNumber := 16777216 * Mem[regs.HL + 9] +
+                                      65536 * Mem[regs.HL + 8] +
+                                        256 * Mem[regs.HL + 7] +
+                                              Mem[regs.HL + 6];
     end;
 end;
 
