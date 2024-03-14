@@ -29,8 +29,9 @@ program lsblk;
 {$i d:nextor.pas}
 
 const
-	maxpartitions 	= 16;
+	maxpartitions 	= 8;
 	maxdevices		= 8;
+	maxdriveletters	= 8;
 
 type
     TDeviceType = (Drive, Device, Floppy, RAMDisk);
@@ -39,20 +40,18 @@ type
     Partition = record
 		PartitionNumber: byte;
 		PartitionType: TPartitionType;	
-		DriveAssignedToPartition: byte;
+		DriveAssignedToPartition: char;
 		PartitionSize: real;
 		PartitionSectors: real;
     end;
 
     DevicesOnMSX = record
-		DeviceNumber: byte;
-		DeviceIndex: byte;
-		DeviceType: TDeviceType;
-		DriverSlot, DriverSegment, LUN: byte;
-		ExtendedPartitionNumber: byte;
-		Partitions: array [1..32] of Partition;
-	end;
-
+		DeviceNumber, DriverSlot, DriverSegment, LUN: byte;
+		Case DeviceType: TDeviceType of
+			Device: (ExtendedPartitionNumber: byte;
+				Partitions: array [1..maxpartitions] of Partition);
+			Drive, Floppy, RAMDisk: (DriveAssigned: char);
+    end;
 var 
 	Parameters:			TTinyString;
 	DeviceDriver: 		TDeviceDriver;
@@ -61,7 +60,9 @@ var
 	PartitionResult: 	TPartitionResult;
 	Devices: 			array [1..maxdevices] of DevicesOnMSX;
 	c:					Char;
-	i, j: 				byte;
+	i, j, k:			byte;
+	found:				boolean;
+	HowManyDevices:		byte;
 
 procedure CommandLine (KindOf: byte);
 (*
@@ -136,8 +137,9 @@ end;
 
 procedure GatherInfoAboutPartitions;
 var
-	HowManyDevices, ErrorCodeInvalidDeviceDriver,
-	ErrorCodeInvalidPartitionNumber: byte;
+	ErrorCodeInvalidDeviceDriver, ErrorCodeInvalidPartitionNumber: byte;
+	aux1, aux2, temp1, temp2: real;
+	
 
 begin
 	FillChar(Devices, SizeOf ( Devices ), 0 );
@@ -153,8 +155,11 @@ begin
 		DeviceDriver.DriverIndex := HowManyDevices;
 		GetInfoDeviceDriver (DeviceDriver);
 		ErrorCodeInvalidDeviceDriver := regs.A;
-
-		writeln (' Device ', HowManyDevices, ' on your MSX.');
+{-----------------------------------------------------------------------------}
+{
+writeln (' Device ', HowManyDevices, ' on your MSX.');
+}
+{-----------------------------------------------------------------------------}
 
 		Devices[HowManyDevices].DeviceNumber := HowManyDevices;
 		
@@ -171,10 +176,12 @@ begin
 		end;
 
 {-----------------------------------------------------------------------------}
+{
 case Devices[HowManyDevices].DeviceType of
 	Drive: 		writeln (' Device ', HowManyDevices , ' has a drive-based driver.	');
 	Device: 	writeln (' Device ', HowManyDevices , ' has a device-based driver.	');
 end;
+}
 {-----------------------------------------------------------------------------}
 		
 		HowManyDevices := HowManyDevices + 1;
@@ -184,19 +191,21 @@ end;
 	while i <= HowManyDevices do
 	begin
 
-(*	Some information which is common for each device. *)
-
+(*	Some information which is common for each device. 						*)
+		
 		if Devices[i].DeviceType = Device then
 		begin
-			DevicePartition.DriverSlot := Devices[i].DriverSlot;
-			DevicePartition.DriverSegment := Devices[i].DriverSegment;
-			DevicePartition.DeviceIndex := i;
-			DevicePartition.LUN := Devices[i].LUN;
-			DevicePartition.GetInfo := true;
+			DevicePartition.DriverSlot 		:= Devices[i].DriverSlot;
+			DevicePartition.DriverSegment 	:= Devices[i].DriverSegment;
+			DevicePartition.DeviceIndex 	:= i;
+			DevicePartition.LUN 			:= Devices[i].LUN;
+			DevicePartition.GetInfo 		:= true;
 		end;
 
-	(*	If the device has a driver, then it would have partitions. Here goes
-		an lousy effort to map primary (1) and extended (2) partitions. *)
+(*	If the device has a driver, then it would have partitions. Here goes an 
+	lousy effort to map primary (1) and extended (2) partitions, and associates 
+	a drive letter to the partition. Obviously, the extended partition doesn't
+	have any drive letters associated.										*)
 			
 		j := 0;
 				
@@ -214,11 +223,33 @@ end;
 			case PartitionResult.PartitionType of
 				1,4,6,14: 	begin
 								Devices[i].Partitions[j].PartitionType 		:= primary;
-								Devices[i].Partitions[j].PartitionSize 		:= SizeBytes(PartitionResult.PartitionSizeMajor, 
-																		PartitionResult.PartitionSizeMinor);
+								
+								temp1 := PartitionResult.PartitionSizeMajor;
+								temp2 := PartitionResult.PartitionSizeMinor;
+								FixBytes (temp1, temp2);
+								
+								Devices[i].Partitions[j].PartitionSize 		:= 65536 * temp1 + temp2;
 
-								Devices[i].Partitions[j].PartitionSectors 	:= SizeBytes(PartitionResult.StartSectorMajor, 
-																		PartitionResult.StartSectorMinor);
+								temp1 := PartitionResult.StartSectorMajor;
+								temp2 := PartitionResult.StartSectorMinor;
+								FixBytes (temp1, temp2);
+								
+								Devices[i].Partitions[j].PartitionSectors 	:= 65536 * temp1 + temp2;
+								
+								aux1 := Devices[i].Partitions[j].PartitionSectors;
+								
+								aux2 := 0;
+								k := 1;
+								
+								while ( k <= maxdriveletters ) and ( aux1 <> aux2 ) do
+								begin
+									DriveLetter.PhysicalDrive := chr(64 + k);
+									GetInfoDriveLetter (DriveLetter);
+									aux2 := DriveLetter.FirstDeviceSectorNumber;
+									if Devices[i].Partitions[j].PartitionSectors = DriveLetter.FirstDeviceSectorNumber then
+										Devices[i].Partitions[j].DriveAssignedToPartition := DriveLetter.PhysicalDrive;
+									k := k + 1;
+								end;
 							end;
 				5: begin
 						Devices[i].Partitions[j].PartitionType 		:= extended;
@@ -229,27 +260,31 @@ end;
 			end;
 
 {-----------------------------------------------------------------------------}
+
 write('Device ', i, ' partition ', j, '  ');
 case Devices[i].Partitions[j].PartitionType of
 	primary: 	writeln('It''s a primary partition.	');
-	extended: 	writeln('It''s a extended partition.	');
+	extended: 	writeln('It''s a extended partition.');
 end;
+writeln ('Drive letter: ', Devices[i].Partitions[j].DriveAssignedToPartition);
 writeln ('Partition size: ', Devices[i].Partitions[j].PartitionSize:2:0);
 writeln ('Initial sector: ', Devices[i].Partitions[j].PartitionSectors:2:0);
 writeln;	
+
 {-----------------------------------------------------------------------------}			
 
 		end;
 		i := i + 1;
 	end;
 
-(*	Now we must find all logical (3) partitions in the extended partition. *)
+(*	Now we must find all logical (3) partitions in the extended partition, and 
+	associate them with the remaining drive letters. 	*)
 
 	i := 1;
 	while ( i <= maxpartitions ) and ( Devices[i].DeviceType = Device ) do
 	begin
 
-(*	Some information which is common for each device. *)
+(*	Some information which is common for each device. 						*)
 
 		DevicePartition.DriverSlot 			:= Devices[i].DriverSlot;
 		DevicePartition.DriverSegment 		:= Devices[i].DriverSegment;
@@ -258,7 +293,7 @@ writeln;
 		DevicePartition.GetInfo 			:= true;
 		DevicePartition.PrimaryPartition 	:= Devices[i].ExtendedPartitionNumber;
 
-(*	Here goes my lousy effort to map all logical (3) partitions. *)
+(*	Here goes my lousy effort to map all logical (3) partitions. 			*)
 			
 		j := 0;
 		ErrorCodeInvalidPartitionNumber := 0;
@@ -267,30 +302,44 @@ writeln;
 		begin
 			j := j + 1;
 			DevicePartition.ExtendedPartition 	:= j;
-
-{
-writeln(Devices[i].ExtendedPartitionNumber);
-writeln(DevicePartition.ExtendedPartition);
-}
 			GetInfoDevicePartition (DevicePartition, PartitionResult);
 			ErrorCodeInvalidPartitionNumber 	:= regs.A;
 			
 			if ErrorCodeInvalidPartitionNumber <> ctIPART then
-				if PartitionResult.PartitionType in [1,4,6,14] then
+				if PartitionResult.PartitionType in [1, 4, 6, 14] then
 				begin
-					Devices[i].Partitions[j].PartitionType	:= logical;
-					Devices[i].Partitions[j].PartitionSize 	:= SizeBytes(PartitionResult.PartitionSizeMajor, 
-															PartitionResult.PartitionSizeMinor);
+					Devices[i].Partitions[j].PartitionType		:= logical;
+					Devices[i].Partitions[j].PartitionSize 		:= 65536 * 	PartitionResult.PartitionSizeMajor +
+																			PartitionResult.PartitionSizeMinor;
 
-					Devices[i].Partitions[j].PartitionSectors 	:= SizeBytes(PartitionResult.StartSectorMajor, 
-															PartitionResult.StartSectorMinor);
+					Devices[i].Partitions[j].PartitionSectors 	:= 65536 *  PartitionResult.StartSectorMajor +
+																			PartitionResult.StartSectorMinor;
 
+					aux1 := Devices[i].Partitions[j].PartitionSectors;
+					aux2 := 0;
+					k := 1;
+					
+					while ( k <= maxdriveletters ) and ( aux1 <> aux2 ) do
+					begin
+{-----------------------------------------------------------------------------}			
+{
+writeln('k: ', k, ' aux1: ', aux1:0:0, ' aux2: ', aux2:0:0);
+}
+{-----------------------------------------------------------------------------}			
+						DriveLetter.PhysicalDrive := chr(64 + k);
+						GetInfoDriveLetter (DriveLetter);
+						aux2 := DriveLetter.FirstDeviceSectorNumber;
+						if Devices[i].Partitions[j].PartitionSectors = DriveLetter.FirstDeviceSectorNumber then
+							Devices[i].Partitions[j].DriveAssignedToPartition := DriveLetter.PhysicalDrive;
+						k := k + 1;
+					end;
 				end;
 
 {-----------------------------------------------------------------------------}
 write('Device ', i, ' extended partition ', DevicePartition.PrimaryPartition);
 if Devices[i].Partitions[j].PartitionType = logical then
 	writeln(' Partition ', j, ' is a logical partition.');
+	writeln(' Drive letter: ', Devices[i].Partitions[j].DriveAssignedToPartition);
 	writeln (' Partition size: ', Devices[i].Partitions[j].PartitionSize:0:0, ' sectors, or ', 
 								((Devices[i].Partitions[j].PartitionSize)/2048):0:0, ' Mb.');
 	writeln (' Initial sector: ', Devices[i].Partitions[j].PartitionSectors:0:0);
@@ -301,21 +350,49 @@ writeln;
 		
 		i := i + 1;
 	end;
+end;
+
+procedure PrintInfoAboutPartitions;
+begin
+	writeln;
+	writeln('There are ', HowManyDevices, ' devices on your MSX.');
 	
-	(*	Finally, we would find any drive letters which is assigned to partitions. *)
-	
-{	
-	i := 1;
-	while i <= 8 do
+	for i := 1 to HowManyDevices do
 	begin
-		with DriveLetter do
-		begin
-			PhysicalDrive := chr(64 + i);
-			GetInfoDriveLetter (DriveLetter);
-		end;	
-		i := i + 1;
+		write('Device ', 	i, ' Slot ', Devices[i].DriverSlot, ' Segment ', 
+						Devices[i].DriverSegment, ' LUN ', Devices[i].LUN, ' ');
+		case Devices[i].DeviceType of
+			Drive: 		begin
+							write(' Drive-based driver. ');
+							writeln(' Drive letter: ', Devices[i].DriveAssigned);
+						end;
+			Device: 	begin
+							j := 1;
+							write(' Device-based driver. ');
+							while ( j <= maxpartitions ) and ( Devices[i].Partitions[j].PartitionNumber <> 0 ) do
+							begin
+								writeln;
+								writeln(' Partition ', Devices[i].Partitions[j].PartitionNumber);
+								case Devices[i].Partitions[j].PartitionType of
+									primary	: writeln(' It''s a primary partition.');
+									extended: writeln(' It''s a extended partition.');
+									logical	: writeln(' It''s a logical partition.');
+								end;
+								writeln(' Drive letter: ', Devices[i].Partitions[j].DriveAssignedToPartition);
+								writeln(' Partition size: ', Devices[i].Partitions[j].PartitionSize:0:0, ' bytes.');
+								writeln(' First sector of partition: ', Devices[i].Partitions[j].PartitionSectors:0:0);
+								j := j + 1;
+							end;
+						end;
+			Floppy: 	write(' Floppy drive. ');
+			RAMDisk: 	begin
+							write(' RAM Disk. ');
+							writeln;
+							writeln(' Drive letter: ', Devices[i].DriveAssigned);
+						end;
+		end;
+		writeln;
 	end;
-}
 end;
 
 BEGIN
@@ -332,9 +409,11 @@ BEGIN
 			end;
 	end;
 
+	GatherInfoAboutPartitions;
+
 	if paramcount = 0 then
 	(*	Shows current information about zero allocation mode. *)
-		GatherInfoAboutPartitions
+		PrintInfoAboutPartitions
 	else
 	begin
 		for i := 1 to paramcount do

@@ -235,8 +235,7 @@ end;
 
 procedure GPARTExample;
 var 
-	SizeReal: real;
-	SizeInteger: integer;
+	Aux1, Aux2: real;
 	
 begin
 	with DevicePartition do
@@ -258,7 +257,7 @@ begin
 		
 		(* Primary and Extended Partition. *)
 		PrimaryPartition 	:= 2;
-		ExtendedPartition 	:= 1;
+		ExtendedPartition 	:= 2;
 
 		writeln (	' Slot: ', DriverSlot, 
 					' Segment: ', DriverSegment, 
@@ -274,13 +273,22 @@ begin
 	with PartitionResult do
 	begin
 		writeln (' Partition type: ', PartitionType,': ', SPartitionType);
-		writeln (' Start sector: ',  SizeBytes(StartSectorMajor, StartSectorMinor):0:0);
-		SizeReal := SizeBytes (PartitionSizeMajor, PartitionSizeMinor);
-		SizeInteger := round(int(SizeReal / 2048));
-		writeln (' Partition size: ', SizeReal:0:0, ' sectors.');
-		writeln (' Partition size: ', SizeInteger, ' Mb. ');
-	end;
+	
+		Aux1 := StartSectorMajor;
+		Aux2 := StartSectorMinor;
+		
+		FixBytes(Aux1, Aux2);
 
+		writeln (' Start sector: ',  SizeBytes(Aux1, Aux2):0:0);
+
+		Aux1 := PartitionSizeMajor;
+		Aux2 := PartitionSizeMinor;
+		
+		FixBytes(Aux1, Aux2);
+
+		writeln (' Partition size: ', SizeBytes (Aux1, Aux2):0:0, ' sectors.');
+		writeln (' Partition size: ', round(int(SizeBytes (Aux1, Aux2) / 2048)), ' Mb. ');
+	end;
 end;
 
 procedure MAPDRVExample;
@@ -313,8 +321,7 @@ begin
 		writeln (' The Device is ', Device, ' and the LUN is ', LUN);
 		writeln (' It maps based on the information given by GPART function call, which is ');
 		writeln (' the start sector of the device. By the way: ', 
-				((65536 - PartitionResult.StartSectorMinor) + 
-				(65536 * PartitionResult.StartSectorMajor)));
+				SizeBytes(PartitionResult.StartSectorMinor, PartitionResult.StartSectorMajor):0:0);
 	end;
 	SetMAPDRV ( MapDrive, 	PartitionResult.StartSectorMajor, 
 							PartitionResult.StartSectorMinor ); 

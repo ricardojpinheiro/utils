@@ -79,7 +79,7 @@ type
 
     TDriveLetter = record
         PhysicalDrive: char;
-        DriveStatus, DriverSlot, DriverSegment,
+		DriveStatus, DriverSlot, DriverSegment,
         RelativeDriveNumber, DeviceIndex, LUN: byte;
         FirstDeviceSectorNumber: real;
     end;
@@ -177,9 +177,18 @@ begin
     until x = 0;
 end;
 
-function SizeBytes (Major, Minor: Integer): real;
+function SizeBytes (Major, Minor: real): real;
 begin
 	SizeBytes := ((Major * 128) + (Minor / 512)) * 512;
+end;
+
+procedure FixBytes (var Aux1: real; var Aux2: real);
+begin
+		if Aux1 < 0 then
+			Aux1 := 65536 + Aux1;
+
+		if Aux2 < 0 then
+			Aux2 := 65536 + Aux2;
 end;
 
 procedure GetRALLOCStatus ( var DriveRalloc: TDriveStatus );
