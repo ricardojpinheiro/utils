@@ -293,7 +293,8 @@ writeln;
 		DevicePartition.GetInfo 			:= true;
 		DevicePartition.PrimaryPartition 	:= Devices[i].ExtendedPartitionNumber;
 
-(*	Here goes my lousy effort to map all logical (3) partitions. 			*)
+(*	Here goes my lousy effort to map all logical (3) partitions, and associates
+	each drive letter to the right logical partition. Well... I hope so!	*)
 			
 		j := 0;
 		ErrorCodeInvalidPartitionNumber := 0;
@@ -309,11 +310,18 @@ writeln;
 				if PartitionResult.PartitionType in [1, 4, 6, 14] then
 				begin
 					Devices[i].Partitions[j].PartitionType		:= logical;
-					Devices[i].Partitions[j].PartitionSize 		:= 65536 * 	PartitionResult.PartitionSizeMajor +
-																			PartitionResult.PartitionSizeMinor;
+					
+					temp1 := PartitionResult.PartitionSizeMajor;
+					temp2 := PartitionResult.PartitionSizeMinor;
+					FixBytes (temp1, temp2);
+					
+					Devices[i].Partitions[j].PartitionSize 		:= 65536 * temp1 + temp2;
 
-					Devices[i].Partitions[j].PartitionSectors 	:= 65536 *  PartitionResult.StartSectorMajor +
-																			PartitionResult.StartSectorMinor;
+					temp1 := PartitionResult.StartSectorMajor;
+					temp2 := PartitionResult.StartSectorMinor;
+					FixBytes (temp1, temp2);
+
+					Devices[i].Partitions[j].PartitionSectors 	:= 65536 * temp1 + temp2;
 
 					aux1 := Devices[i].Partitions[j].PartitionSectors;
 					aux2 := 0;
@@ -321,11 +329,6 @@ writeln;
 					
 					while ( k <= maxdriveletters ) and ( aux1 <> aux2 ) do
 					begin
-{-----------------------------------------------------------------------------}			
-{
-writeln('k: ', k, ' aux1: ', aux1:0:0, ' aux2: ', aux2:0:0);
-}
-{-----------------------------------------------------------------------------}			
 						DriveLetter.PhysicalDrive := chr(64 + k);
 						GetInfoDriveLetter (DriveLetter);
 						aux2 := DriveLetter.FirstDeviceSectorNumber;
