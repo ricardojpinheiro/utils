@@ -65,13 +65,13 @@ const
     ctDisableZ80AccessMode      =   $00;
     ctEnableZ80AccessMode       =   $FF;
 
-    ctICLUS         = $B0; (* Invalid cluster number or sequence.   *)
-    ctBFSZ          = $B1; (* Bad file size.                        *)
-    ctFMNT          = $B2; (* File is mounted.                      *)
-    ctPUSED         = $B3; (* Partition is already in use.          *)
-    ctIPART         = $B4; (* Invalid partition number.             *)
-    ctIDEVL         = $B5; (* Invalid device or LUN.                *)
-    ctIDRVR         = $B6; (* Invalid device driver.                *)
+    ctICLUS         = $B0; (* Invalid cluster number or sequence.   (176) *)
+    ctBFSZ          = $B1; (* Bad file size.                  		(177) *)
+    ctFMNT          = $B2; (* File is mounted.                		(178) *)
+    ctPUSED         = $B3; (* Partition is already in use.   	 	(179) *)
+    ctIPART         = $B4; (* Invalid partition number.       		(180) *)
+    ctIDEVL         = $B5; (* Invalid device or LUN.          		(181) *)
+    ctIDRVR         = $B6; (* Invalid device driver.          		(182) *)
     
 type
     TBinNumber  = array [0..7] of byte;
@@ -79,7 +79,7 @@ type
 
     TDriveLetter = record
         PhysicalDrive: char;
-		DriveStatus, DriverSlot, DriverSegment,
+        DriveStatus, DriverSlot, DriverSegment,
         RelativeDriveNumber, DeviceIndex, LUN: byte;
         FirstDeviceSectorNumber: real;
     end;
@@ -179,16 +179,16 @@ end;
 
 function SizeBytes (Major, Minor: real): real;
 begin
-	SizeBytes := ((Major * 128) + (Minor / 512)) * 512;
+    SizeBytes := ((Major * 128) + (Minor / 512)) * 512;
 end;
 
 procedure FixBytes (var Aux1: real; var Aux2: real);
 begin
-		if Aux1 < 0 then
-			Aux1 := 65536 + Aux1;
+        if Aux1 < 0 then
+            Aux1 := 65536 + Aux1;
 
-		if Aux2 < 0 then
-			Aux2 := 65536 + Aux2;
+        if Aux2 < 0 then
+            Aux2 := 65536 + Aux2;
 end;
 
 procedure GetRALLOCStatus ( var DriveRalloc: TDriveStatus );
@@ -232,9 +232,9 @@ begin
     
     MSXBDOS ( regs );
 
-	temp1 := maxint + regs.DE;
-	temp2 := maxint + regs.HL;
-	
+    temp1 := maxint + regs.DE;
+    temp2 := maxint + regs.HL;
+    
     GetDriveSpaceInfo := temp1 + temp2;
 end;
 

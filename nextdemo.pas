@@ -30,13 +30,13 @@ program Nextor_Demo;
 
 var
     MSXDOSVersao: TMSXDOSVersion;
-	DriveStatus: TDriveStatus;
-	DeviceDriver: TDeviceDriver;
-	DriveLetter: TDriveLetter;
-	DevicePartition: TDevicePartition;
-	PartitionResult: TPartitionResult;
-	MapDrive: TMapDrive;
-	Character: char;
+    DriveStatus: TDriveStatus;
+    DeviceDriver: TDeviceDriver;
+    DriveLetter: TDriveLetter;
+    DevicePartition: TDevicePartition;
+    PartitionResult: TPartitionResult;
+    MapDrive: TMapDrive;
+    Character: char;
 
 function Readkey : char;
 var
@@ -53,311 +53,317 @@ end;
 
 procedure DOSVEREnhancedExample;
 begin
-	FillChar (regs, SizeOf ( regs ), 0 );
-	regs.C := ctGetMSXDOSVersionNumber;
-	regs.B  := $005A;
-	regs.HL := $1234;
-	regs.DE := $ABCD;
-	regs.IX := $0000;
+    FillChar (regs, SizeOf ( regs ), 0 );
+    regs.C := ctGetMSXDOSVersionNumber;
+    regs.B  := $005A;
+    regs.HL := $1234;
+    regs.DE := $ABCD;
+    regs.IX := $0000;
 
-	MSXBDOS ( regs );
-	
-	writeln;
-	if regs.B < 2 then
-		writeln (' MSX-DOS 1 detected. ')
-	else
-		if regs.IX = 0 then
-		begin
-			writeln (' MSX-DOS 2 detected. ');
-			writeln (' MSXDOS2.SYS ', regs.D, '.', regs.E);
-		end
-		else
-		begin
-			writeln (' Nextor detected. ');
-			writeln (' NEXTOR.SYS ', regs.D, '.', regs.E);
-		end;
-	
+    MSXBDOS ( regs );
+    
+    writeln;
+    if regs.B < 2 then
+        writeln (' MSX-DOS 1 detected. ')
+    else
+        if regs.IX = 0 then
+        begin
+            writeln (' MSX-DOS 2 detected. ');
+            writeln (' MSXDOS2.SYS ', regs.D, '.', regs.E);
+        end
+        else
+        begin
+            writeln (' Nextor detected. ');
+            writeln (' NEXTOR.SYS ', regs.D, '.', regs.E);
+        end;
+    
 end;
 
 procedure DSPACEExample;
 var 
-	i: byte;
-	
+    i: byte;
+    
 begin
-	writeln;
-	writeln (' Which drive do you want to get info? ');
-	Character := upcase(readkey);
-	writeln (' Free space in drive ', Character, ': ', 
-				(GetDriveSpaceInfo (Character, ctGetFreeSpace)):2:2 , ' kb.');
-	writeln (' Total space in drive ', Character, ': ', 
-				(GetDriveSpaceInfo (Character, ctGetTotalSpace)):2:2 , ' Kb.');
+    writeln;
+    writeln (' Which drive do you want to get info? ');
+    Character := upcase(readkey);
+    writeln (' Free space in drive ', Character, ': ', 
+                (GetDriveSpaceInfo (Character, ctGetFreeSpace)):2:2 , ' kb.');
+    writeln (' Total space in drive ', Character, ': ', 
+                (GetDriveSpaceInfo (Character, ctGetTotalSpace)):2:2 , ' Kb.');
 end;
 
 procedure LOCKExample;
 var
-	i: byte;
+    i: byte;
 begin
-	writeln;
-	writeln (' Which drive do you want to get and set lock info? ');
-	Character := upcase(readkey);
-		if GetLockStatus (Character) = 0 then
-			writeln (' Drive ', Character, ' is unlocked')
-		else
-			writeln (' Drive ', Character, ' is locked. ');
+    writeln;
+    writeln (' Which drive do you want to get and set lock info? ');
+    Character := upcase(readkey);
+        if GetLockStatus (Character) = 0 then
+            writeln (' Drive ', Character, ' is unlocked')
+        else
+            writeln (' Drive ', Character, ' is locked. ');
 
-		if SetLockStatus (Character, true) = 0 then
-			writeln (' Now Drive ', Character, ' is unlocked')
-		else
-			writeln (' Now Drive ', Character, ' is locked. ');
+        if SetLockStatus (Character, true) = 0 then
+            writeln (' Now Drive ', Character, ' is unlocked')
+        else
+            writeln (' Now Drive ', Character, ' is locked. ');
 end;
 
 procedure RALLOCExample;
 var 
-	i: byte;
-	Status: TTinyString;
+    i: byte;
+    Status: TTinyString;
 
 begin
-	writeln;
-	writeln (' Which drive do you want to get zero allocation status? ');
-	Character := upcase(readkey);
-	i := ord(Character) - 65;
-	
-	writeln;	
-	writeln('Get Ralloc Status: ');	
+    writeln;
+    writeln (' Which drive do you want to get zero allocation status? ');
+    Character := upcase(readkey);
+    i := ord(Character) - 65;
+    
+    writeln;    
+    writeln('Get Ralloc Status: '); 
 
-	GetRALLOCStatus (DriveStatus);
-	
-	if DriveStatus[i] = 0 then
-		Status := 'OFF'
-	else
-		Status := 'ON';
+    GetRALLOCStatus (DriveStatus);
+    
+    if DriveStatus[i] = 0 then
+        Status := 'OFF'
+    else
+        Status := 'ON';
 
-	write ('Drive ', Character , ': ', Status);
+    write ('Drive ', Character , ': ', Status);
 
-	writeln;
-	writeln('Set Ralloc Status: ');
-	
-	writeln;
-	writeln (' Do you want to set zero allocation status for this drive? (Y/N)');
-	Character := upcase(readkey);
+    writeln;
+    writeln('Set Ralloc Status: ');
+    
+    writeln;
+    writeln (' Do you want to set zero allocation status for this drive? (Y/N)');
+    Character := upcase(readkey);
 
-	if Character = 'Y' then
-		DriveStatus[i] := 1
-	else
-		DriveStatus[i] := 0;
+    if Character = 'Y' then
+        DriveStatus[i] := 1
+    else
+        DriveStatus[i] := 0;
 
-	SetRALLOCStatus (DriveStatus);
+    SetRALLOCStatus (DriveStatus);
 
-	writeln;
-	writeln('Get All Ralloc Status: ');
-	GetRALLOCStatus (DriveStatus);
+    writeln;
+    writeln('Get All Ralloc Status: ');
+    GetRALLOCStatus (DriveStatus);
 
-	for i := 0 to 7 do
-	begin
-		write ('Drive ',chr(65 + i), ': ');
-		if DriveStatus[i] = 0 then
-			writeln('OFF')
-		else
-			writeln('ON');
-	end;
+    for i := 0 to 7 do
+    begin
+        write ('Drive ',chr(65 + i), ': ');
+        if DriveStatus[i] = 0 then
+            writeln('OFF')
+        else
+            writeln('ON');
+    end;
 end;
 
 procedure GDRVRExample;
 begin
-	FillChar(DeviceDriver, SizeOf ( DeviceDriver ), 0 );
+    FillChar(DeviceDriver, SizeOf ( DeviceDriver ), 0 );
 
-	with DeviceDriver do
-	begin
-		DriverIndex := 1;
-		DriverSlot := 0;
-		DriverSegment := 0;
-	end;
-	
-	GetInfoDeviceDriver (DeviceDriver);
+    with DeviceDriver do
+    begin
+        DriverIndex := 1;
+        DriverSlot := 0;
+        DriverSegment := 0;
+    end;
+    
+    GetInfoDeviceDriver (DeviceDriver);
 
-	writeln('regs.A = ', regs.A);
+    writeln('regs.A = ', regs.A);
 
-	writeln;
-	with DeviceDriver do
-	begin
-		writeln (' Driver Index: ', DriverIndex);
-		writeln (' Driver Slot: ', DriverSlot);
-		writeln (' Driver Segment: ', DriverSegment);
-		writeln (' How many assigned drive letters: ', DriveLettersAtBootTime);
-		writeln (' First drive letter: ', FirstDriveLetter);
-		if NextorOrMSXDOSDriver = 0 then
-			writeln (' It''s a MSX-DOS driver.')
-		else
-			writeln (' It''s a Nextor driver.');
-		if HasDRVCONFIG = 0 then
-			writeln (' This driver implements the DRV_CONFIG routine.')
-		else
-			writeln (' This driver doesn''t implements the DRV_CONFIG routine.');
-		if DeviceOrDrive = 0 then
-			writeln (' This is a drive-based driver.')
-		else
-			writeln (' This is a device-based driver.');
-		writeln (' Driver number: '	, DriverMainNumber, '.' 
-									, DriverSecondaryNumber, '.' 
-									, DriverRevisionNumber);
-		write (' Driver Name: ', DriverName);
-	end;
+    writeln;
+    with DeviceDriver do
+    begin
+        writeln (' Driver Index: ', DriverIndex);
+        writeln (' Driver Slot: ', DriverSlot);
+        writeln (' Driver Segment: ', DriverSegment);
+        writeln (' How many assigned drive letters: ', DriveLettersAtBootTime);
+        writeln (' First drive letter: ', FirstDriveLetter);
+        if NextorOrMSXDOSDriver = 0 then
+            writeln (' It''s a MSX-DOS driver.')
+        else
+            writeln (' It''s a Nextor driver.');
+        if HasDRVCONFIG = 0 then
+            writeln (' This driver implements the DRV_CONFIG routine.')
+        else
+            writeln (' This driver doesn''t implements the DRV_CONFIG routine.');
+        if DeviceOrDrive = 0 then
+            writeln (' This is a drive-based driver.')
+        else
+            writeln (' This is a device-based driver.');
+        writeln (' Driver number: ' , DriverMainNumber, '.' 
+                                    , DriverSecondaryNumber, '.' 
+                                    , DriverRevisionNumber);
+        write (' Driver Name: ', DriverName);
+    end;
 end;
 
 procedure GDLIExample;
 begin
-	writeln;
-	writeln (' Which drive do you want to get information? ');
-	DriveLetter.PhysicalDrive := upcase(readkey);
-	
-	GetInfoDriveLetter (DriveLetter);
-	
-	with DriveLetter do
-	begin
-		writeln(' Physical Drive: ', PhysicalDrive);
-		write(' Drive Status: ');
-		case DriveStatus of
-			0: writeln ('Unassigned.'); 
-			1: writeln ('Assigned to a storage device attached to a Nextor or MSX-DOS driver.');
-			2: writeln ('Unused.');
-			3: writeln ('A file is mounted in the drive.');
-			4: writeln ('Assigned to the RAM disk.');
-		end;		
-		writeln(' Driver Slot: ', DriverSlot);
-		writeln(' Driver Segment: ', DriverSegment);
-		writeln(' Relative Drive Number: ', RelativeDriveNumber);
-		writeln(' Device Index: ', DeviceIndex);
-		writeln(' LUN: ', LUN);
-		writeln(' First Device Sector Number: ', FirstDeviceSectorNumber:0:0);
-	end;
-	
+    writeln;
+    writeln (' Which drive do you want to get information? ');
+    DriveLetter.PhysicalDrive := upcase(readkey);
+    
+    GetInfoDriveLetter (DriveLetter);
+    
+    with DriveLetter do
+    begin
+        writeln(' Physical Drive: ', PhysicalDrive);
+        write(' Drive Status: ');
+        case DriveStatus of
+            0: writeln ('Unassigned.'); 
+            1: writeln ('Assigned to a storage device attached to a Nextor or MSX-DOS driver.');
+            2: writeln ('Unused.');
+            3: writeln ('A file is mounted in the drive.');
+            4: writeln ('Assigned to the RAM disk.');
+        end;        
+        writeln(' Driver Slot: ', DriverSlot);
+        writeln(' Driver Segment: ', DriverSegment);
+        writeln(' Relative Drive Number: ', RelativeDriveNumber);
+        writeln(' Device Index: ', DeviceIndex);
+        writeln(' LUN: ', LUN);
+        writeln(' First Device Sector Number: ', FirstDeviceSectorNumber:0:0);
+    end;
+    
 end;
 
 procedure GPARTExample;
 var 
-	Aux1, Aux2: real;
-	
+    Aux1, Aux2: real;
+    
 begin
-	with DevicePartition do
-	begin
-		(* Driver Slot. *)
-		DriverSlot := 1;
-		
-		(* Driver Segment. *)
-		DriverSegment := 255;
-		
-		(* Device Index. *)
-		DeviceIndex := 1;
-		
-		(* LUN. *)
-		LUN := 1;
-		
-		(* Get Info? *)
-		GetInfo := true;
-		
-		(* Primary and Extended Partition. *)
-		PrimaryPartition 	:= 2;
-		ExtendedPartition 	:= 2;
+    with DevicePartition do
+    begin
+        (* Driver Slot. *)
+        DriverSlot := 1;
+        
+        (* Driver Segment. *)
+        DriverSegment := 255;
+        
+        (* Device Index. *)
+        DeviceIndex := 1;
+        
+        (* LUN. *)
+        LUN := 1;
+        
+        (* Get Info? *)
+        GetInfo := true;
+        
+        (* Primary and Extended Partition. *)
+        PrimaryPartition    := 2;
+        ExtendedPartition   := 1;
 
-		writeln (	' Slot: ', DriverSlot, 
-					' Segment: ', DriverSegment, 
-					' Device: ', DeviceIndex,
-					' LUN: ', LUN);
+        writeln (   ' Slot: ', DriverSlot, 
+                    ' Segment: ', DriverSegment, 
+                    ' Device: ', DeviceIndex,
+                    ' LUN: ', LUN);
 
-	end;
-	
-	GetInfoDevicePartition (DevicePartition, PartitionResult);
-	
-	writeln('regs.A = ', regs.A);
-	
-	with PartitionResult do
-	begin
-		writeln (' Partition type: ', PartitionType,': ', SPartitionType);
-	
-		Aux1 := StartSectorMajor;
-		Aux2 := StartSectorMinor;
-		
-		FixBytes(Aux1, Aux2);
+    end;
+    
+    GetInfoDevicePartition (DevicePartition, PartitionResult);
+    
+    writeln('regs.A = ', regs.A);
+    
+    with PartitionResult do
+    begin
+        writeln (' Partition type: ', PartitionType,': ', SPartitionType);
+    
+        Aux1 := PartitionSizeMajor;
+        Aux2 := PartitionSizeMinor;
+        FixBytes(Aux1, Aux2);
 
-		writeln (' Start sector: ',  SizeBytes(Aux1, Aux2):0:0);
+{------------------------------------------------------------------------------}
+writeln('PartitionSize: ', Aux1:0:0, ' ', Aux2:0:0);
+{------------------------------------------------------------------------------}
 
-		Aux1 := PartitionSizeMajor;
-		Aux2 := PartitionSizeMinor;
-		
-		FixBytes(Aux1, Aux2);
+        writeln (' Partition size: ', SizeBytes (Aux1, Aux2):0:0, ' sectors.');
+        writeln (' Partition size: ', round(int(SizeBytes (Aux1, Aux2) / 2048)), ' Mb. ');
 
-		writeln (' Partition size: ', SizeBytes (Aux1, Aux2):0:0, ' sectors.');
-		writeln (' Partition size: ', round(int(SizeBytes (Aux1, Aux2) / 2048)), ' Mb. ');
-	end;
+        Aux1 := StartSectorMajor;
+        Aux2 := StartSectorMinor;
+        FixBytes(Aux1, Aux2);
+
+{------------------------------------------------------------------------------}
+writeln('StartSector: ', Aux1:0:0, ' ', Aux2:0:0);
+{------------------------------------------------------------------------------}
+
+        writeln (' Start sector: ',  SizeBytes(Aux1, Aux2):0:0);
+    end;
 end;
 
 procedure MAPDRVExample;
 begin
-	with MapDrive do
-	begin
-		(* Physical Drive. For instance, drive B. *)
-		PhysicalDrive := 'B';
-		
-		(* Map drive using specific data. *)
-		Action := ctMapDriveSpecificData;
-		
-		(* File mount = 0. *)
-		FileMount := 0;
+    with MapDrive do
+    begin
+        (* Physical Drive. For instance, drive B. *)
+        PhysicalDrive := 'B';
+        
+        (* Map drive using specific data. *)
+        Action := ctMapDriveSpecificData;
+        
+        (* File mount = 0. *)
+        FileMount := 0;
 
-		(* Slot 1. *)
-		Slot := 1;
-		
-		(* Segment 255.*)
-		Segment := 255;
-		
-		(* Device 1. *)
-		Device := 1;
-		
-		(* LUN 1. *)
-		LUN := 1;
+        (* Slot 1. *)
+        Slot := 1;
+        
+        (* Segment 255.*)
+        Segment := 255;
+        
+        (* Device 1. *)
+        Device := 1;
+        
+        (* LUN 1. *)
+        LUN := 1;
 
-		writeln (' Drive ', PhysicalDrive, ' will be mapped using specific data.');
-		writeln (' It''ll be mapped in a device which slot is ', Slot, ' and Segment is ', Segment, '.');
-		writeln (' The Device is ', Device, ' and the LUN is ', LUN);
-		writeln (' It maps based on the information given by GPART function call, which is ');
-		writeln (' the start sector of the device. By the way: ', 
-				SizeBytes(PartitionResult.StartSectorMinor, PartitionResult.StartSectorMajor):0:0);
-	end;
-	SetMAPDRV ( MapDrive, 	PartitionResult.StartSectorMajor, 
-							PartitionResult.StartSectorMinor ); 
+        writeln (' Drive ', PhysicalDrive, ' will be mapped using specific data.');
+        writeln (' It''ll be mapped in a device which slot is ', Slot, ' and Segment is ', Segment, '.');
+        writeln (' The Device is ', Device, ' and the LUN is ', LUN);
+        writeln (' It maps based on the information given by GPART function call, which is ');
+        writeln (' the start sector of the device. By the way: ', 
+                SizeBytes(PartitionResult.StartSectorMinor, PartitionResult.StartSectorMajor):0:0);
+    end;
+    SetMAPDRV ( MapDrive,   PartitionResult.StartSectorMajor, 
+                            PartitionResult.StartSectorMinor ); 
 end;
 
 procedure Z80MODEExample;
 
-	function msx_version: byte;
-	var 
-		version:    byte;
-	begin
-	  inline($3e/$80/              { LD A,&H80        }
-			 $21/$2d/$00/          { LD HL,&H002D     }
-			 $cd/$0c/$00/          { CALL &H000C      }
-			 $32/version/          { LD (VERSIE),A    }
-			 $fb);                 { EI               }
-	  msx_version := version + 1;
-	end;
+    function msx_version: byte;
+    var 
+        version:    byte;
+    begin
+      inline($3e/$80/              { LD A,&H80        }
+             $21/$2d/$00/          { LD HL,&H002D     }
+             $cd/$0c/$00/          { CALL &H000C      }
+             $32/version/          { LD (VERSIE),A    }
+             $fb);                 { EI               }
+      msx_version := version + 1;
+    end;
 
 begin
-	if msx_version = 4 then
-	begin
-		writeln (' Get Z80 access mode status for a driver: ');
-		writeln (' Driver slot: 1');
-		writeln (' Current Z80 access mode: ', GetZ80AccessMode (1));
+    if msx_version = 4 then
+    begin
+        writeln (' Get Z80 access mode status for a driver: ');
+        writeln (' Driver slot: 1');
+        writeln (' Current Z80 access mode: ', GetZ80AccessMode (1));
 
-		writeln (' Set Z80 access mode status for a driver: ');
-		writeln (' Driver slot: 1');
-		writeln (' Current Z80 access mode: ', SetZ80AccessMode (1, true));
-	end
-	else
-		writeln (' Sorry, this function call only runs in MSX Turbo-Rs.');
+        writeln (' Set Z80 access mode status for a driver: ');
+        writeln (' Driver slot: 1');
+        writeln (' Current Z80 access mode: ', SetZ80AccessMode (1, true));
+    end
+    else
+        writeln (' Sorry, this function call only runs in MSX Turbo-Rs.');
 end;
 
 BEGIN
-	Character := ' ';
+    Character := ' ';
     while (Character <> 'F') do
     begin
         clrscr;
@@ -384,21 +390,21 @@ BEGIN
             '5': GDRVRExample;
             '6': GDLIExample;
             '7': GPARTExample;
-            '8': 	begin
-						GPARTExample;
-						MAPDRVExample;
-					end;
+            '8':    begin
+                        GPARTExample;
+                        MAPDRVExample;
+                    end;
             '9': Z80MODEExample;
-            'A': 	begin
-						writeln (' This code was written to have some examples of how we can use the Nextor'); 
-						writeln (' function calls. There are some function calls that wasn''t implemented, ');
-						writeln (' as FOUT, ZSTROUT, RDDRW, WRDRV, CDRVR and GETCLUS. The reasons may vary,');
-						writeln (' such as lack of interest or the lack of need: FOUT and ZSTROUT, for ');
-						writeln (' example, can even be implemented, but there are some routines which are');
-						writeln (' as good as these Nextor function calls. So, there were implemented inly');
-						writeln (' the most important Nextor function calls. If you want to write the lost ');
-						writeln (' Nextor function calls, be my guest. ');
-					end;
+            'A':    begin
+                        writeln (' This code was written to have some examples of how we can use the Nextor'); 
+                        writeln (' function calls. There are some function calls that wasn''t implemented, ');
+                        writeln (' as FOUT, ZSTROUT, RDDRW, WRDRV, CDRVR and GETCLUS. The reasons may vary,');
+                        writeln (' such as lack of interest or the lack of need: FOUT and ZSTROUT, for ');
+                        writeln (' example, can even be implemented, but there are some routines which are');
+                        writeln (' as good as these Nextor function calls. So, there were implemented inly');
+                        writeln (' the most important Nextor function calls. If you want to write the lost ');
+                        writeln (' Nextor function calls, be my guest. ');
+                    end;
             'F': exit;
         end;
         Character := readkey;
