@@ -26,6 +26,9 @@
  *)
 
 const
+
+(*	Nextor new function calls. *)
+
     ctFOUT      = $71; (* FOUT routine. Barely implemented.     *)
     ctZSTROUT   = $72; (* ZSTROUT routine. Barely implemented.  *)
     ctRDDRV     = $73; (* RDDRV routine. Not implemented.       *)
@@ -36,10 +39,12 @@ const
     ctGDRVR     = $78; (* GDRVR routine.                        *)
     ctGDLI      = $79; (* GDLI routine.                         *)
     ctGPART     = $7A; (* GPART routine.                        *)
-    ctCDRVR     = $7B; (* CDRVR routine. Not implemented.       *)
-    ctMAPDRV    = $7C; (* MAPDRV  routine.                      *)
+    ctCDRVR     = $7B; (* CDRVR routine.				        *)
+    ctMAPDRV    = $7C; (* MAPDRV routine.                       *)
     ctZ80MODE   = $7D; (* Z80MODE routine.                      *)
     ctGETCLUS   = $7E; (* GETCLUS routine. Not implemented.     *)
+
+(*	Constants which can be used to change states. *)
 
     ctGetFastStroutMode         =   $00;
     ctSetFastStroutMode         =   $01;
@@ -65,6 +70,8 @@ const
     ctDisableZ80AccessMode      =   $00;
     ctEnableZ80AccessMode       =   $FF;
 
+(*	Error codes. *)
+
     ctICLUS         = $B0; (* Invalid cluster number or sequence.   (176) *)
     ctBFSZ          = $B1; (* Bad file size.                  		(177) *)
     ctFMNT          = $B2; (* File is mounted.                		(178) *)
@@ -72,6 +79,12 @@ const
     ctIPART         = $B4; (* Invalid partition number.       		(180) *)
     ctIDEVL         = $B5; (* Invalid device or LUN.          		(181) *)
     ctIDRVR         = $B6; (* Invalid device driver.          		(182) *)
+
+(*	Routines for device-based drivers. *)
+	ctDEV_RW		= 	$4160; (* Reads or writes absolute sectors from/to a device. *)
+	ctDEV_INFO		=	$4163; (* Returns information about a device. *)
+	ctDEV_STATUS	=	$4166; (* Obtain the availability and change status for a device or logical unit.*)
+	ctLUN_INFO		=	$4169; (* Obtain information for a logical unit.*)
     
 type
     TBinNumber  = array [0..7] of byte;
@@ -104,6 +117,14 @@ type
         StartSectorMajor, StartSectorMinor: integer;
         PartitionSizeMajor, PartitionSizeMinor: integer;
     end;
+    
+    TRoutineDeviceDriver = record
+		DriverSlot, DriverSegment: byte;
+		RoutineAddress: integer;
+		Data: string[8];
+		ResultBC, ResultDE, ResultHL,ResultIX: integer;
+		ErrorCode: byte;
+	end;
     
     TMapDrive = record
         PhysicalDrive: char;
@@ -431,6 +452,48 @@ begin
         PartitionSizeMinor := regs.IY;
 
     end;
+end;
+
+procedure CallRoutineInDeviceDriver (var RoutineDeviceDriver: TRoutineDeviceDriver);
+begin
+	FillChar( regs, SizeOf( regs ), 0 );
+	
+	with RoutineDeviceDriver do
+	begin
+		(* Driver slot number. *)
+		regs.A := DriverSlot;
+
+		(* Driver segment number. *)
+		regs.B := DriverSegment;
+		
+		(* Routine address. *)
+		regs.DE := RoutineAddress;
+		
+		(*	Address of a 8 byte buffer with the input register values for the 
+			routine. *)
+		regs.HL := Addr (Data);
+		
+		(*	ctCDRVR.	*)
+		regs.C := ctCDRVR;
+		
+		(* It's showtime. *)
+		MSXBDOS ( regs );
+
+		(*	Returns BC register. *)
+		ResultBC := regs.BC;
+		
+		(*	Returns DE register. *)
+		ResultDE := regs.DE;
+		
+		(*	Returns HL register. *)
+		ResultHL := regs.HL;
+		
+		(*	Returns IX register. *)
+		ResultIX := regs.IX;
+
+		(*	Returns error code. *)
+		ErrorCode := regs.A;
+	end;
 end;
 
 procedure SetMAPDRV (   MapDrive: TMapDrive; 

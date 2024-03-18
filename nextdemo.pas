@@ -168,14 +168,14 @@ begin
 
     with DeviceDriver do
     begin
-        DriverIndex := 1;
+        DriverIndex := 4;
         DriverSlot := 0;
         DriverSegment := 0;
     end;
     
     GetInfoDeviceDriver (DeviceDriver);
 
-    writeln('regs.A = ', regs.A);
+    writeln('Error code = ', regs.A);
 
     writeln;
     with DeviceDriver do
@@ -230,7 +230,6 @@ begin
         writeln(' LUN: ', LUN);
         writeln(' First Device Sector Number: ', FirstDeviceSectorNumber:0:0);
     end;
-    
 end;
 
 procedure GPARTExample;
@@ -247,7 +246,7 @@ begin
         DriverSegment := 255;
         
         (* Device Index. *)
-        DeviceIndex := 1;
+        DeviceIndex := 2;
         
         (* LUN. *)
         LUN := 1;
@@ -256,8 +255,8 @@ begin
         GetInfo := true;
         
         (* Primary and Extended Partition. *)
-        PrimaryPartition    := 2;
-        ExtendedPartition   := 1;
+        PrimaryPartition    := 1;
+        ExtendedPartition   := 0;
 
         writeln (   ' Slot: ', DriverSlot, 
                     ' Segment: ', DriverSegment, 
@@ -269,6 +268,7 @@ begin
     GetInfoDevicePartition (DevicePartition, PartitionResult);
     
     writeln('regs.A = ', regs.A);
+    writeln('regs.C = ', regs.C);
     
     with PartitionResult do
     begin
@@ -278,20 +278,12 @@ begin
         Aux2 := PartitionSizeMinor;
         FixBytes(Aux1, Aux2);
 
-{------------------------------------------------------------------------------}
-writeln('PartitionSize: ', Aux1:0:0, ' ', Aux2:0:0);
-{------------------------------------------------------------------------------}
-
         writeln (' Partition size: ', SizeBytes (Aux1, Aux2):0:0, ' sectors.');
         writeln (' Partition size: ', round(int(SizeBytes (Aux1, Aux2) / 2048)), ' Mb. ');
 
         Aux1 := StartSectorMajor;
         Aux2 := StartSectorMinor;
         FixBytes(Aux1, Aux2);
-
-{------------------------------------------------------------------------------}
-writeln('StartSector: ', Aux1:0:0, ' ', Aux2:0:0);
-{------------------------------------------------------------------------------}
 
         writeln (' Start sector: ',  SizeBytes(Aux1, Aux2):0:0);
     end;
