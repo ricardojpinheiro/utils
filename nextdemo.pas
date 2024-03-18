@@ -69,12 +69,12 @@ begin
         if regs.IX = 0 then
         begin
             writeln (' MSX-DOS 2 detected. ');
-            writeln (' MSXDOS2.SYS ', regs.D, '.', regs.E);
+            writeln (' MSXDOS2.SYS ', regs.D, '.', Decimal2Hexa(regs.E));
         end
         else
         begin
             writeln (' Nextor detected. ');
-            writeln (' NEXTOR.SYS ', regs.D, '.', regs.E);
+            writeln (' NEXTOR.SYS ', regs.D, '.', Decimal2Hexa(regs.E));
         end;
     
 end;
@@ -289,6 +289,10 @@ begin
     end;
 end;
 
+procedure CDRVRExample;
+begin
+end;
+
 procedure MAPDRVExample;
 begin
     with MapDrive do
@@ -354,6 +358,10 @@ begin
         writeln (' Sorry, this function call only runs in MSX Turbo-Rs.');
 end;
 
+var
+	Hexa: TBinNumber;
+	i: byte;
+
 BEGIN
     Character := ' ';
     while (Character <> 'F') do
@@ -368,9 +376,10 @@ BEGIN
         writeln(' 5 - GDRVR (Get information about a device driver).');
         writeln(' 6 - GDLI (Get information about a drive letter).');
         writeln(' 7 - GPART (Get information about a device partition).');
-        writeln(' 8 - MAPDRV (Map a drive letter to a driver and device).');
-        writeln(' 9 - Z80MODE (Enable or disable the Z80 access mode for a driver).');
-        writeln(' A - Information about the lib and this program');
+        writeln(' 8 - CDRVR (Call a routine in a device driver).');
+        writeln(' 9 - MAPDRV (Map a drive letter to a driver and device).');
+        writeln(' A - Z80MODE (Enable or disable the Z80 access mode for a driver).');
+        writeln(' B - Information about the lib and this program');
         writeln(' F - End.');
         Character := upcase(readkey);
         writeln;
@@ -382,12 +391,13 @@ BEGIN
             '5': GDRVRExample;
             '6': GDLIExample;
             '7': GPARTExample;
-            '8':    begin
+            '8': CDRVRExample;
+            '9':    begin
                         GPARTExample;
                         MAPDRVExample;
                     end;
-            '9': Z80MODEExample;
-            'A':    begin
+            'A': Z80MODEExample;
+            'B':    begin
                         writeln (' This code was written to have some examples of how we can use the Nextor'); 
                         writeln (' function calls. There are some function calls that wasn''t implemented, ');
                         writeln (' as FOUT, ZSTROUT, RDDRW, WRDRV, CDRVR and GETCLUS. The reasons may vary,');

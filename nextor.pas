@@ -88,6 +88,7 @@ const
     
 type
     TBinNumber  = array [0..7] of byte;
+    TPunyString = string[4];
     TDriveStatus = TBinNumber;
 
     TDriveLetter = record
@@ -197,6 +198,49 @@ begin
         i := i + 1;
     until x = 0;
 end;
+
+(* Finds the first occurence of a char which is different into a string. *)
+
+function DifferentPos(Character: char; Phrase: TString): byte;
+var
+    i: byte;
+    Found: boolean;
+begin
+    i := 1;
+    Found := false;
+    repeat
+        if Phrase[i] <> Character then
+        begin
+            DifferentPos := i;
+            Found := true;
+        end;
+        i := i + 1;
+    until (Found) or (i >= length(Phrase));
+    if Not Found then DifferentPos := 0;
+end;
+
+function Decimal2Hexa (w: integer): TPunyString;
+var
+	hexStr: TTinyString;
+
+  function Translate (b: byte): char;
+  begin
+    if b < 10 then
+		translate := chr(b + 48)
+    else
+		translate := chr(b + 55);
+  end;
+
+begin   { of  Decimal2Hexa }
+	FillChar (hexstr, SizeOf (hexstr), chr(32));
+	hexstr		:=	hexstr	+	translate(hi(w) shr 4);
+	hexstr		:=	hexstr	+	translate(hi(w) and 15);
+	hexstr		:=	hexstr	+	translate(lo(w) shr 4);
+	hexstr		:=	hexstr	+	translate(lo(w) and 15);
+
+	Delete (hexstr, 1, DifferentPos(chr(32), hexstr) - 1);
+	Decimal2Hexa	:=	hexstr;
+end; 
 
 function SizeBytes (Major, Minor: real): real;
 begin
