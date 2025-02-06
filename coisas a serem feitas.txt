@@ -1,0 +1,5 @@
+O problema é quando encontra 2 devices. Não está sendo possível comparar e distinguir de qual device aquela partição está.
+
+O segredo está no devinfo.mac. Tem q implementar a rotina CDRVR, e procurar no documento de criação de drivers pelas rotinas DEV_INFO e LUN_INFO.
+
+DOSVEREnhancedExample - o resultado da versão vem em decimal, e tem que passar para hexadecimal.
