@@ -80,7 +80,7 @@ begin
                 writeln('| \__ \ |_) | |   <    ');
                 writeln('|_|___/_.__/|_|_|\_\   ');             
                 writeln;
-                Writeln('Version 0.1 - Copyright (c) 2024 by');
+                Writeln('Version 0.1 - Copyright (c) 2024-25 by');
                 Writeln('Brazilian MSX Crew. Some rights');
                 Writeln('reserved (not many!).');
                 writeln;
@@ -431,11 +431,11 @@ writeln;
 					Drives[8] := true;	(*	This drive letter is busy. *)
 
 {------------------------------------------------------------------------------}
-
+{
 write ('Found drive letter ', PhysicalDrive);
 write ('. It''s related to device ', Device, ' slot ', Devices[Device].DriverSlot);
 writeln;
-
+}
 {------------------------------------------------------------------------------}
 				end;
 			end;
@@ -569,7 +569,8 @@ for i := 0 to HowManyDevices do
                                     logical : writeln(' It''s a logical partition.');
                                 end;
                                 writeln(' Drive letter: ', Devices[i].Partitions[j].DriveAssignedToPartition);
-                                writeln(' Partition size: ', Devices[i].Partitions[j].PartitionSize:0:0, ' bytes.');
+                                writeln(' Partition size: ', (Devices[i].Partitions[j].PartitionSize * 512):0:0, 
+										' bytes, or ', (Devices[i].Partitions[j].PartitionSize/2097152):2:2, ' Gb.');
                                 writeln(' First sector of partition: ', Devices[i].Partitions[j].PartitionSectors:0:0);
                                 j := j + 1;
                             end;

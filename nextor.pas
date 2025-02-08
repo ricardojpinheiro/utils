@@ -81,10 +81,11 @@ const
     ctIDRVR         = $B6; (* Invalid device driver.          		(182) *)
 
 (*	Routines for device-based drivers. *)
+	ctDRV_VERSION	= 	$4133; (* Returns the driver version.*)
 	ctDEV_RW		= 	$4160; (* Reads or writes absolute sectors from/to a device. *)
-	ctDEV_INFO		=	$4163; (* Returns information about a device. *)
-	ctDEV_STATUS	=	$4166; (* Obtain the availability and change status for a device or logical unit.*)
-	ctLUN_INFO		=	$4169; (* Obtain information for a logical unit.*)
+	ctDEV_INFO		=	$4163; (* Returns info about a device. *)
+	ctDEV_STATUS	=	$4166; (* Get the availability and change status for a device or logical unit.*)
+	ctLUN_INFO		=	$4169; (* Get info about a logical unit.*)
     
 type
     TBinNumber  = array [0..7] of byte;
@@ -122,7 +123,7 @@ type
     TRoutineDeviceDriver = record
 		DriverSlot, DriverSegment: byte;
 		RoutineAddress: integer;
-		Data: string[8];
+		Data: array[0..7] of byte;
 		ResultBC, ResultDE, ResultHL,ResultIX: integer;
 		ErrorCode: byte;
 	end;
@@ -143,24 +144,8 @@ type
     end;
 
 var
-    regs: TRegs;
-
-function GetNextorErrorCode (ErrorCode: byte): TShortString;
-var
-    temp: TShortString;
-begin
-    str(ErrorCode, temp);
-    case ErrorCode of
-        ctIDRVR: GetNextorErrorCode := ' Invalid device driver.';
-        ctIDEVL: GetNextorErrorCode := ' Invalid device or LUN.';
-        ctIPART: GetNextorErrorCode := ' Invalid partition number.';
-        ctPUSED: GetNextorErrorCode := ' Partition is already in use.';
-        ctFMNT:  GetNextorErrorCode := ' File is mounted. ';
-        ctBFSZ:  GetNextorErrorCode := ' Bad file size. ';
-        ctICLUS: GetNextorErrorCode := ' Invalid cluster number or sequence. ';
-        else GetNextorErrorCode := temp;
-    end;
-end;
+    regs				: TRegs;
+    nNextorSlotNumber 	: byte absolute $0f348;
 
 function Power (x, y: integer): integer;
 var
@@ -239,6 +224,7 @@ begin   { of  Decimal2Hexa }
 	hexstr		:=	hexstr	+	translate(lo(w) and 15);
 
 	Delete (hexstr, 1, DifferentPos(chr(32), hexstr) - 1);
+	Delete (hexstr, 1, DifferentPos(chr(48), hexstr) - 1);
 	Decimal2Hexa	:=	hexstr;
 end; 
 
@@ -254,6 +240,23 @@ begin
 
         if Aux2 < 0 then
             Aux2 := 65536 + Aux2;
+end;
+
+function GetNextorErrorCode (ErrorCode: byte): TShortString;
+var
+    temp: TShortString;
+begin
+    str(ErrorCode, temp);
+    case ErrorCode of
+        ctIDRVR: GetNextorErrorCode := ' Invalid device driver.';
+        ctIDEVL: GetNextorErrorCode := ' Invalid device or LUN.';
+        ctIPART: GetNextorErrorCode := ' Invalid partition number.';
+        ctPUSED: GetNextorErrorCode := ' Partition is already in use.';
+        ctFMNT:  GetNextorErrorCode := ' File is mounted. ';
+        ctBFSZ:  GetNextorErrorCode := ' Bad file size. ';
+        ctICLUS: GetNextorErrorCode := ' Invalid cluster number or sequence. ';
+        else GetNextorErrorCode := temp;
+    end;
 end;
 
 procedure GetRALLOCStatus ( var DriveRalloc: TDriveStatus );
@@ -287,20 +290,24 @@ begin
     FillChar( regs, SizeOf( regs ), 0 );
 
     (* Nextor routine. *)
-    regs.C := ctDSPACE;
+    Regs.C := ctDSPACE;
     
     (* Drive letter - 0 is the default drive letter. *)
-    regs.E := ord (DriveLetter) - 64;
+    Regs.E := ord (DriveLetter) - 64;
     
     (* Free space or total space. *)
-    regs.A := FreeOrTotalSpace;
+    Regs.A := FreeOrTotalSpace;
     
     MSXBDOS ( regs );
 
-    temp1 := maxint + regs.DE;
-    temp2 := maxint + regs.HL;
-    
-    GetDriveSpaceInfo := temp1 + temp2;
+	if Regs.DE < 0 then
+		temp1 := 65536 + Regs.DE
+	else
+		temp1 := Regs.DE;
+
+	temp2 := Regs.HL;
+	
+	GetDriveSpaceInfo := 65536 * temp2 + temp1;
 end;
 
 function GetLockStatus ( DriveLetter: char): byte;
@@ -345,7 +352,6 @@ begin
 
     (* Current lock status. *)
     SetLockStatus := regs.B;
-    
 end;
 
 procedure GetInfoDeviceDriver (var DeviceDriver: TDeviceDriver);
@@ -392,6 +398,7 @@ begin
 
         for i := 8 to 40 do
             DriverName[i - 7]   := chr(Mem[regs.HL + i]);
+            
         DriverName[0] := chr(sizeof(DriverName));
     end;
 end;
@@ -457,9 +464,9 @@ begin
         
         (* Get info? *)
         if GetInfo then
-            regs.H := 0
+            regs.H := 128
         else
-            regs.H := 128;
+            regs.H := 0;
         
         (* Primary partition. *)
         regs.H := regs.H + PrimaryPartition;
@@ -515,7 +522,7 @@ begin
 		
 		(*	Address of a 8 byte buffer with the input register values for the 
 			routine. *)
-		regs.HL := Addr (Data);
+		regs.HL := Addr(Data);
 		
 		(*	ctCDRVR.	*)
 		regs.C := ctCDRVR;

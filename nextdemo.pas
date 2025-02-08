@@ -35,6 +35,7 @@ var
     DriveLetter: TDriveLetter;
     DevicePartition: TDevicePartition;
     PartitionResult: TPartitionResult;
+    RoutineDeviceDriver: TRoutineDeviceDriver;
     MapDrive: TMapDrive;
     Character: char;
 
@@ -88,9 +89,9 @@ begin
     writeln (' Which drive do you want to get info? ');
     Character := upcase(readkey);
     writeln (' Free space in drive ', Character, ': ', 
-                (GetDriveSpaceInfo (Character, ctGetFreeSpace)):2:2 , ' kb.');
+                (GetDriveSpaceInfo (Character, ctGetFreeSpace)):2:0 , ' Kb.');
     writeln (' Total space in drive ', Character, ': ', 
-                (GetDriveSpaceInfo (Character, ctGetTotalSpace)):2:2 , ' Kb.');
+                (GetDriveSpaceInfo (Character, ctGetTotalSpace)):2:0 , ' Kb.');
 end;
 
 procedure LOCKExample;
@@ -168,11 +169,11 @@ begin
 
     with DeviceDriver do
     begin
-        DriverIndex := 4;
-        DriverSlot := 0;
-        DriverSegment := 0;
+        DriverIndex := nNextorSlotNumber;
+        DriverSlot := 2;
+        DriverSegment := $FF;
     end;
-    
+
     GetInfoDeviceDriver (DeviceDriver);
 
     writeln('Error code = ', regs.A);
@@ -235,18 +236,22 @@ end;
 procedure GPARTExample;
 var 
     Aux1, Aux2: real;
+    Slot: byte;
     
 begin
+	write ('Slot (0-3): ');
+	read (Slot);
+	writeln;
     with DevicePartition do
     begin
         (* Driver Slot. *)
-        DriverSlot := 1;
+        DriverSlot := nNextorSlotNumber;
         
         (* Driver Segment. *)
-        DriverSegment := 255;
+        DriverSegment := $FF;
         
         (* Device Index. *)
-        DeviceIndex := 2;
+        DeviceIndex := 1;
         
         (* LUN. *)
         LUN := 1;
@@ -278,8 +283,8 @@ begin
         Aux2 := PartitionSizeMinor;
         FixBytes(Aux1, Aux2);
 
-        writeln (' Partition size: ', SizeBytes (Aux1, Aux2):0:0, ' sectors.');
-        writeln (' Partition size: ', round(int(SizeBytes (Aux1, Aux2) / 2048)), ' Mb. ');
+        writeln (' Partition size (Sectors): ', SizeBytes (Aux1, Aux2):0:0, ' sectors.');
+        writeln (' Partition size (Mb): 	 ', round(int(SizeBytes (Aux1, Aux2) / 1048576)), ' Mb. ');
 
         Aux1 := StartSectorMajor;
         Aux2 := StartSectorMinor;
@@ -290,7 +295,163 @@ begin
 end;
 
 procedure CDRVRExample;
+var
+	i, j, k: integer;
+	a, b: byte;
+	c: char;
+	RealData: real;
+	Information: array[0..63] of byte;
+	Data: array[0..7] of byte;
+	LUNData: array [0..11] of byte;
+	
 begin
+(*	DEV_INFO. *)
+
+	writeln('DEV_INFO:');
+	write (' Which device do you want to get info? (1-7): ');
+	readln(b);
+
+	for j := 0 to 3 do
+	begin
+		FillChar(Data, 			SizeOf (Data), 			0);
+		FillChar(Information, 	SizeOf (Information), 	chr(32));
+
+		regs.C 	:= ctCDRVR;
+		regs.A 	:= nNextorSlotNumber;
+		regs.B 	:= $FF;
+		regs.DE := ctDEV_INFO;
+		regs.HL := Addr(Data);
+
+		Data[0] := 0;	(*F*)
+		Data[1] := b;	(*A*)
+		Data[2] := 0;	(*C*)
+		Data[3] := j;	(*B*)
+		Data[4] := 0;	(*E*)
+		Data[5] := 0;	(*D*)
+		Data[6] := lo(Addr(Information));	(*L*)
+		Data[7] := hi(Addr(Information));	(*H*)
+
+		MSXBDOS ( regs );
+
+		if j = 0 then
+		begin
+			writeln('Device ', b);
+			writeln('Number of logical units: ',	Information[0]);
+			writeln('Device features flags: ', 		Information[1]);
+			writeln('Information type: ', Data[3], ' regs.A: ', regs.A);
+			writeln('Regs.B: ', regs.B, ' Regs.C: ', regs.C);
+			writeln('Regs.DE: ', regs.DE, ' Regs.HL: ', regs.HL);
+			writeln('Value of AF returned by the routine (Regs.IX): ', regs.IX);
+		end;
+		case j of
+			0: write('Basic information: ');
+			1: write('Manufacturer name string: ');
+			2: write('Device name string: ');
+			3: write('Serial number string: ');
+		end;
+		for i := 0 to 63 do 
+			write(chr(Information[i]));
+		writeln;
+	end;
+(*	LUN_INFO. *)
+
+	writeln('LUN_INFO:');
+
+	FillChar(Data, 			SizeOf (Data), 			0);
+	FillChar(LUNData, 		SizeOf (LUNData), 		0);
+	FillChar(Information, 	SizeOf (Information), 	chr(32));
+
+	writeln (' Which device do you want to get information? (1 to 7)');
+	c := readkey;
+	val (c, i, k);
+
+	writeln (' Which LUN do you want to get information?');
+	c := readkey;
+	val (c, j, k);
+
+	regs.A := nNextorSlotNumber;
+	regs.B := $FF;
+	regs.DE := ctLUN_INFO;
+	regs.HL := Addr(Data);
+	regs.C 	:= ctCDRVR;
+
+	Data[0] := 0;	(*F*)
+	Data[1] := i;	(*A*)
+	Data[2] := 0;	(*C*)
+	Data[3] := j;	(*B*)
+	Data[4] := 0;	(*E*)
+	Data[5] := 0;	(*D*)
+	Data[6] := lo(Addr(LUNData));	(*L*)
+	Data[7] := hi(Addr(LUNData));	(*H*)
+
+	MSXBDOS ( regs );
+
+	writeln('Device ', i);
+	if regs.A = 0 then
+	begin
+		write('Medium type: ');
+		case LUNData[0] of
+			0: 		write('Block device.');
+			1: 		write('CD or DVD reader or recorder.');
+			else 	write('Unused (reserved for future use).');
+		end;
+		writeln;
+
+		RealData := 256 * LUNData[2] + LUNData[1];
+		writeln('Sector size: ', RealData:3:0);
+
+		k := LUNData[6];
+		RealData :=	16777216 * k;
+		k := LUNData[5];
+		RealData := RealData + 65536 * k;
+		k := LUNData[4];
+		RealData := RealData + 256 * k;
+		k := LUNData[3];
+		RealData := RealData + k;
+
+		writeln('Total number of available sectors: ', RealData:6:0);
+		writeln('LUN feature flags: ', LUNData[7]);
+		RealData := 256 * LUNData[9] + LUNData[8];
+		writeln('Number of cylinders: ', RealData:3:0);
+		writeln('Number of heads: ', LUNData[10]);
+		writeln('Number of sectors per track: ', LUNData[11]);
+	end
+	else
+		writeln('Error, device or LUN not available.');
+{
+	FillChar(Data, 			SizeOf (Data), 			0);
+	FillChar(Information, 	SizeOf (Information), 	chr(32));
+		
+	writeln('DEV_STATUS: ');
+	regs.A := 1;
+	regs.B := $FF;
+	regs.DE := ctDEV_STATUS;
+	regs.HL := Addr(Data);
+	regs.C 	:= ctCDRVR;
+
+	for i := 1 to 7 do
+	begin
+		Data[0] := 0;	(*F*)
+		Data[1] := i;	(*A*)
+		Data[2] := 0;	(*C*)
+		Data[3] := 1;	(*B*)
+		Data[4] := 0;	(*E*)
+		Data[5] := 0;	(*D*)
+		Data[6] := lo(Addr(LUNData));	(*L*)
+		Data[7] := hi(Addr(LUNData));	(*H*)
+
+		MSXBDOS ( regs );
+		
+		writeln (' Device ', Data[1], ' LUN ', Data[3]);
+		case LUNData[0] of
+			0: 	 writeln (Regs.A, ' Device or logical unit isn''t available, or the device or LUN supplied is invalid.');
+			1: 	 writeln (Regs.A, ' Device or logical unit is available, not changed since the last status request.');
+			2: 	 writeln (Regs.A, ' Device or logical unit is available, changed since the last status request.');
+			3: 	 writeln (Regs.A, ' Device or logical unit is available, not possible to determine if changed or not.');
+			else writeln (Regs.A, ' Who cares.');
+		end;
+	end;
+}
 end;
 
 procedure MAPDRVExample;
@@ -307,7 +468,7 @@ begin
         FileMount := 0;
 
         (* Slot 1. *)
-        Slot := 1;
+        Slot := nNextorSlotNumber;
         
         (* Segment 255.*)
         Segment := 255;
@@ -400,12 +561,12 @@ BEGIN
             'B':    begin
                         writeln (' This code was written to have some examples of how we can use the Nextor'); 
                         writeln (' function calls. There are some function calls that wasn''t implemented, ');
-                        writeln (' as FOUT, ZSTROUT, RDDRW, WRDRV, CDRVR and GETCLUS. The reasons may vary,');
-                        writeln (' such as lack of interest or the lack of need: FOUT and ZSTROUT, for ');
-                        writeln (' example, can even be implemented, but there are some routines which are');
-                        writeln (' as good as these Nextor function calls. So, there were implemented inly');
-                        writeln (' the most important Nextor function calls. If you want to write the lost ');
-                        writeln (' Nextor function calls, be my guest. ');
+                        writeln (' as FOUT, ZSTROUT, RDDRW, WRDRV and GETCLUS. The reasons may vary, such  ');
+                        writeln (' as lack of interest or the lack of need: FOUT and ZSTROUT, for example, ');
+                        writeln (' can even be implemented, but there are some routines which are as good  ');
+                        writeln (' as these Nextor function calls. So, there were implemented only the most');
+                        writeln (' important Nextor function calls. If you want to write the lost Nextor   ');
+                        writeln (' function calls, be my guest. ');
                     end;
             'F': exit;
         end;
