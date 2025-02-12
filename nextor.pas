@@ -121,7 +121,7 @@ type
     end;
     
     TRoutineDeviceDriver = record
-		DriverSlot, DriverSegment: byte;
+		DriverIndex, DriverSlot, DriverSegment: byte;
 		RoutineAddress: integer;
 		Data: array[0..7] of byte;
 		ResultBC, ResultDE, ResultHL,ResultIX: integer;
@@ -142,10 +142,16 @@ type
         Slot, Segment, Device, LUN: byte;
         StartSectorMinor, StartSectorMajor: integer;
     end;
+    
+	TSlotSubslot = record
+		Slot, Subslot: byte;
+	end;
+
+	TNextorDevices = array [1..8] of TSlotSubslot;
 
 var
     regs				: TRegs;
-    nNextorSlotNumber 	: byte absolute $0f348;
+    nNextorSlotNumber 	: byte absolute $f348;
 
 function Power (x, y: integer): integer;
 var
@@ -216,8 +222,9 @@ var
 		translate := chr(b + 55);
   end;
 
-begin   { of  Decimal2Hexa }
+begin   { Decimal2Hexa }
 	FillChar (hexstr, SizeOf (hexstr), chr(32));
+
 	hexstr		:=	hexstr	+	translate(hi(w) shr 4);
 	hexstr		:=	hexstr	+	translate(hi(w) and 15);
 	hexstr		:=	hexstr	+	translate(lo(w) shr 4);
@@ -225,6 +232,7 @@ begin   { of  Decimal2Hexa }
 
 	Delete (hexstr, 1, DifferentPos(chr(32), hexstr) - 1);
 	Delete (hexstr, 1, DifferentPos(chr(48), hexstr) - 1);
+
 	Decimal2Hexa	:=	hexstr;
 end; 
 
@@ -257,6 +265,59 @@ begin
         ctICLUS: GetNextorErrorCode := ' Invalid cluster number or sequence. ';
         else GetNextorErrorCode := temp;
     end;
+end;
+
+function HowManyNextorDevices (var NextorDevices: TNextorDevices): byte;
+
+var
+	i, j, Slot, Subslot: byte;
+	Data: array[0..7] of byte;
+	
+begin
+	j := 0;
+	Slot := 1;
+	Subslot := 0;
+	
+	FillChar (NextorDevices, 	SizeOf(NextorDevices), 	0);
+	
+	for i := nNextorSlotNumber to nNextorSlotNumber + (ctMaxSlots * ctMaxSecSlots) do
+	begin
+	(*	Call a routine in a device driver *)
+		regs.C 	:= ctCDRVR;
+	(*	Driver slot number, from $F348 to $F348 + (4 * 4) *)
+		regs.A 	:= i;
+	(*	Driver segment number - $FF for ROM drivers. *)
+		regs.B 	:= $FF;
+	(*	Routine address - BTW, DEV_INFO ($4163). *)
+		regs.DE := ctDEV_INFO;
+	(*	Address of a 8 byte buffer with the input register values for DEV_INFO. *)
+		regs.HL := Addr(Data);
+
+		Data[0] := 0;	(*Register F*)
+		Data[1] := i;	(*Register A: Device index (1 to 7).*)
+		Data[2] := 0;	(*Register C*)
+		Data[3] := 0;	(*Register B: Information to return - basic.*)
+		Data[4] := 0;	(*Register E*)
+		Data[5] := 0;	(*Register D*)
+	(*	We aren't using HL registers because it doesn´t matter to this routine. *)
+	(*	Here is where the magic begins. *)
+		MSXBDOS ( regs );
+	(*	If there aren't any errors... There is a Nextor kernel here. *)
+		if regs.A = 0 then
+		begin
+			j := j + 1;
+			NextorDevices[j].Slot := Slot;
+			NextorDevices[j].Subslot := Subslot;
+		end;
+		
+		Subslot := Subslot + 1;
+		if Subslot > 3 then
+		begin
+			Slot := Slot + 1;
+			Subslot := 0;
+		end;
+	end;
+	HowManyNextorDevices := j;
 end;
 
 procedure GetRALLOCStatus ( var DriveRalloc: TDriveStatus );

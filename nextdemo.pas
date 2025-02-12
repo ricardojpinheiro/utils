@@ -53,6 +53,9 @@ begin
 end;
 
 procedure DOSVEREnhancedExample;
+var 
+	i: byte;
+
 begin
     FillChar (regs, SizeOf ( regs ), 0 );
     regs.C := ctGetMSXDOSVersionNumber;
@@ -62,22 +65,26 @@ begin
     regs.IX := $0000;
 
     MSXBDOS ( regs );
+
+	i := hi(regs.IX);
     
-    writeln;
     if regs.B < 2 then
         writeln (' MSX-DOS 1 detected. ')
     else
-        if regs.IX = 0 then
-        begin
-            writeln (' MSX-DOS 2 detected. ');
-            writeln (' MSXDOS2.SYS ', regs.D, '.', Decimal2Hexa(regs.E));
-        end
-        else
-        begin
-            writeln (' Nextor detected. ');
-            writeln (' NEXTOR.SYS ', regs.D, '.', Decimal2Hexa(regs.E));
-        end;
-    
+		if regs.IX = 0 then
+		begin
+			writeln (' MSX-DOS 2 detected. ');
+			writeln (' MSXDOS2.SYS ', regs.B, '.', Decimal2Hexa(regs.C));
+		end
+		else
+			if i = 1 then
+			begin
+				writeln (' Nextor detected. ');
+				writeln (' NEXTOR.SYS ', regs.D, '.', Decimal2Hexa(regs.E));
+			end
+			else
+				if (i in [0, 1]) = false then
+					writeln (' It''s not MSX-DOS, neither Nextor. What the heck is that?'); 
 end;
 
 procedure DSPACEExample;
@@ -169,8 +176,8 @@ begin
 
     with DeviceDriver do
     begin
-        DriverIndex := nNextorSlotNumber;
-        DriverSlot := 2;
+        DriverIndex := 0;
+        DriverSlot := nNextorSlotNumber;
         DriverSegment := $FF;
     end;
 
@@ -303,7 +310,7 @@ var
 	Information: array[0..63] of byte;
 	Data: array[0..7] of byte;
 	LUNData: array [0..11] of byte;
-	
+		
 begin
 (*	DEV_INFO. *)
 
@@ -317,7 +324,15 @@ begin
 		FillChar(Information, 	SizeOf (Information), 	chr(32));
 
 		regs.C 	:= ctCDRVR;
+
+(*	nNextorSlotNumber returns 129 if it's in slot 1.
+	My theory is that 129 = slot 1, 130 = slot 1-0...
+	And 134 = slot 2. *)		
+		
 		regs.A 	:= nNextorSlotNumber;
+{
+		regs.A 	:= 134;
+}
 		regs.B 	:= $FF;
 		regs.DE := ctDEV_INFO;
 		regs.HL := Addr(Data);
@@ -335,6 +350,7 @@ begin
 
 		if j = 0 then
 		begin
+			writeln('Nextor kernel slot: ', nNextorSlotNumber);
 			writeln('Device ', b);
 			writeln('Number of logical units: ',	Information[0]);
 			writeln('Device features flags: ', 		Information[1]);
@@ -418,12 +434,12 @@ begin
 	end
 	else
 		writeln('Error, device or LUN not available.');
-{
+
 	FillChar(Data, 			SizeOf (Data), 			0);
 	FillChar(Information, 	SizeOf (Information), 	chr(32));
 		
 	writeln('DEV_STATUS: ');
-	regs.A := 1;
+	regs.A := nNextorSlotNumber;
 	regs.B := $FF;
 	regs.DE := ctDEV_STATUS;
 	regs.HL := Addr(Data);
@@ -437,13 +453,16 @@ begin
 		Data[3] := 1;	(*B*)
 		Data[4] := 0;	(*E*)
 		Data[5] := 0;	(*D*)
+		Data[6] := 0;	(*L*)
+		Data[7] := 0;	(*H*)
+{
 		Data[6] := lo(Addr(LUNData));	(*L*)
 		Data[7] := hi(Addr(LUNData));	(*H*)
-
+}
 		MSXBDOS ( regs );
 		
 		writeln (' Device ', Data[1], ' LUN ', Data[3]);
-		case LUNData[0] of
+		case Regs.A of
 			0: 	 writeln (Regs.A, ' Device or logical unit isn''t available, or the device or LUN supplied is invalid.');
 			1: 	 writeln (Regs.A, ' Device or logical unit is available, not changed since the last status request.');
 			2: 	 writeln (Regs.A, ' Device or logical unit is available, changed since the last status request.');
@@ -451,7 +470,6 @@ begin
 			else writeln (Regs.A, ' Who cares.');
 		end;
 	end;
-}
 end;
 
 procedure MAPDRVExample;

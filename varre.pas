@@ -37,8 +37,10 @@ var
     DevicePartition: TDevicePartition;
     PartitionResult: TPartitionResult;
     RoutineDeviceDriver: TRoutineDeviceDriver;
+    NextorDevices: TNextorDevices;
     MapDrive: TMapDrive;
     Character: char;
+    i, j: byte;
 
 function Readkey : char;
 var
@@ -110,6 +112,16 @@ end;
 BEGIN
     Character := ' ';
 	clrscr;
+{
 	writeln(' Varre os dispositivos no MSX e aponta quais estao disponiveis. ');
 	GDRVRExample;
+}
+	j := HowManyNextorDevices (NextorDevices);
+
+	writeln ('There are ', j, ' Nextor kernel(s).');
+
+	for i := 1 to j do
+		writeln('Nextor devices found in slot ', NextorDevices[i].Slot, 
+				' subslot ', NextorDevices[i].Subslot);
+
 END.

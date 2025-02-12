@@ -21,9 +21,12 @@
 
 (* Module useful constants *)
 
-Const                  ctMaxPath         = 127; { Maximum path size - MSXDOS2 }
-                       ctMaxDirName      = 11;  { Directory name entry size }
-                       ctUnitializedSlot = 255; { Unitialized slot id }
+Const                  	ctMaxPath         = 127; { Maximum path size - MSXDOS2 }
+						ctMaxDirName      = 11;  { Directory name entry size }
+						ctUnitializedSlot = 255; { Unitialized slot id }
+
+						ctMaxSlots        = 4;    { Max. MSX slots           }
+						ctMaxSecSlots     = 4;    { Max. MSX secondary slots }
 
 (**
   * New types definitions
