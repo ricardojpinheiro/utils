@@ -124,4 +124,7 @@ BEGIN
 		writeln('Nextor devices found in slot ', NextorDevices[i].Slot, 
 				' subslot ', NextorDevices[i].Subslot);
 
+	readln;
+	GDRVRExample;
+
 END.

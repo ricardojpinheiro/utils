@@ -135,13 +135,13 @@ begin
             DOSVEREnhancedDetection := 2;
 end;
 
-procedure GetInfoAboutEverything;
+procedure GatherInfoAboutEverything;
 var
     Dev, MaxDev, Part, ExtendedPartition: byte;
     ErrorCodeInvalidDeviceDriver, ErrorCodeInvalidPartition: byte;
     aux1, aux2: real;
 
-	procedure GetInfoAboutDevices (HowManyDevices: byte; 
+	procedure GatherInfoAboutDevices (HowManyDevices: byte; 
 									var ErrorCodeInvalidDeviceDriver: byte);
 	begin
 		with DeviceDriver do
@@ -170,7 +170,7 @@ var
 		ErrorCodeInvalidDeviceDriver := regs.A;
 	end;
 	
-	procedure GetInfoAboutPrimaryAndExtendedPartitionsOnDevice (Device, 
+	procedure GatherInfoAboutPrimaryAndExtendedPartitionsOnDevice (Device, 
 		Partition: byte; var ErrorCodeInvalidPartition, ExtendedPartition: byte);
 								
 	begin
@@ -206,27 +206,16 @@ var
 				Devices[Device].Partitions[Partition].PartitionType 	:= primary;
 				Devices[Device].NumberOfPartitions := Devices[Device].NumberOfPartitions + 1;
 
-				FillChar(Aux1, SizeOf ( Aux1 ), 0 );
-				FillChar(Aux2, SizeOf ( Aux2 ), 0 );
-
 				Aux1 := PartitionResult.PartitionSizeMajor;
 				Aux2 := PartitionResult.PartitionSizeMinor;
-
 				FixBytes(Aux1, Aux2);
-									
 				Devices[Device].Partitions[Partition].PartitionSize		:= SizeBytes (Aux1, Aux2);
-
-				FillChar(Aux1, SizeOf ( Aux1 ), 0 );
-				FillChar(Aux2, SizeOf ( Aux2 ), 0 );
 
 				Aux1 := PartitionResult.StartSectorMajor;
 				Aux2 := PartitionResult.StartSectorMinor;
-
 				FixBytes(Aux1, Aux2);
-
 				Devices[Device].Partitions[Partition].PartitionSectors	:= SizeBytes (Aux1, Aux2);
 			end;
-			
 			if PartitionResult.PartitionType = 5 then
 			begin									(* Extended partition. *)										
 				Devices[Device].Partitions[Partition].PartitionNumber 	:= Partition;
@@ -234,28 +223,14 @@ var
 				ExtendedPartition 										:= Partition;
 				Devices[Device].NumberOfPartitions := Devices[Device].NumberOfPartitions + 1;
 
-				FillChar(Aux1, SizeOf ( Aux1 ), 0 );
-				FillChar(Aux2, SizeOf ( Aux2 ), 0 );
-
 				Aux1 := PartitionResult.PartitionSizeMajor;
 				Aux2 := PartitionResult.PartitionSizeMinor;
-
 				FixBytes(Aux1, Aux2);
-
 				Devices[Device].Partitions[Partition].PartitionSize		:= SizeBytes (Aux1, Aux2);
-
-				FillChar(Aux1, SizeOf ( Aux1 ), 0 );
-				FillChar(Aux2, SizeOf ( Aux2 ), 0 );
 
 				Aux1 := PartitionResult.StartSectorMajor;
 				Aux2 := PartitionResult.StartSectorMinor;
-
-writeln('Major: ', Aux1:2:0, ' Minor: ', Aux2:2:0);		
-
 				FixBytes(Aux1, Aux2);
-
-writeln('Fixed Major: ', Aux1:2:0, ' Fixed Minor: ', Aux2:2:0);					
-
 				Devices[Device].Partitions[Partition].PartitionSectors	:= SizeBytes (Aux1, Aux2);
 			end;
 		
@@ -271,7 +246,7 @@ case Devices[Device].Partitions[Partition].PartitionType of
 	logical:   	writeln('It''s a logical partition.');
 end;
 
-writeln ('Partition size: ', Devices[Device].Partitions[Partition].PartitionSize:2:0, ' sectors.');
+writeln ('Partition size: ', Devices[Device].Partitions[Partition].PartitionSize:2:0);
 writeln ('Initial sector: ', Devices[Device].Partitions[Partition].PartitionSectors:2:0);
 writeln;    
 }
@@ -279,7 +254,7 @@ writeln;
 		end;
 	end;
 	
-	procedure GetInfoAboutLogicalPartitionsOnDevice(Device, Partition: byte; 
+	procedure GatherInfoAboutLogicalPartitionsOnDevice(Device, Partition: byte; 
 						var ErrorCodeInvalidPartition, ExtendedPartition: byte);
 	var
 		LogicalPartition: byte;
@@ -352,7 +327,7 @@ writeln;
 		end;
 	end;
 	
-	procedure GetInfoAboutDriveLettersOnPartitions (DriveLetterNumber: byte; Device: byte);
+	procedure GatherInfoAboutDriveLettersOnPartitions (DriveLetterNumber: byte; Device: byte);
 	var
 		Partition, i: byte;
 	begin
@@ -367,7 +342,7 @@ writeln;
 
 (*	Then we'll try logical partitions. *)
         
-		with DriveLetter do
+        with DriveLetter do
         begin
 			i := 1;
 			
@@ -403,7 +378,7 @@ writeln ('It''s related to device ', Device, ' slot ', Devices[Device].DriverSlo
 		end;
 	end;
 
-	procedure GetInfoAboutDrive (DriveLetterNumber: byte; Device: byte);
+	procedure GatherInfoAboutDrive (DriveLetterNumber: byte; Device: byte);
 	begin
 
 (*	Here we must find all drive letters which is assigned to a drive. *)
@@ -434,7 +409,7 @@ writeln;
 		end;	
 	end;
 	
-	procedure GetInfoAboutRAMDisk (Device: byte);
+	procedure GatherInfoAboutRAMDisk (Device: byte);
 	begin
 		if Drives[8] = false then
 		begin
@@ -473,80 +448,87 @@ begin
 
 (*  Find how many devices are used in the MSX and get info about them. *)
 
-    Dev := 1;
+    Dev := 0;
     ErrorCodeInvalidDeviceDriver := 0;
-
-	HowManyDevices := HowManyNextorDevices (NextorDevices);
-
-	while (Dev <= HowManyDevices) AND (ErrorCodeInvalidDeviceDriver <> ctIDRVR) do
+	
+	writeln ('Here it goes - find all devices in one Nextor kernel.');
+	
+	MaxDev := HowManyNextorDevices (NextorDevices);
+	
+	writeln ('Here it goes - Nextor Devices: ', MaxDev);
+	
+	while (Dev <= MaxDev) AND (ErrorCodeInvalidDeviceDriver <> ctIDRVR) do
 	begin
-		GetInfoAboutDevices (Dev, ErrorCodeInvalidDeviceDriver);
 		Dev := Dev + 1;
+		GatherInfoAboutDevices (Dev, ErrorCodeInvalidDeviceDriver);
+		
+{-----------------------------------------------------------------------------}
+{
+case Devices[Dev].DeviceType of
+    Drive: 	write (' Device ', Devices[Dev].DeviceNumber , ' has a drive-based driver. ');
+    Device:	write (' Device ', Dev , ' has a device-based driver. ');
+end;
+write ('Driver Slot: ', Devices[Dev].DriverSlot, ' Segment: ', Devices[Dev].DriverSegment);
+writeln;
+}
+{-----------------------------------------------------------------------------}
+
     end;
 
-{----------------------}
-{
-	with Devices[HowManyDevices] do
-	begin
-		writeln('Device Number: ', DeviceNumber);
-		writeln('Driver Slot: ', DriverSlot);
-		writeln('Driver segment: ', DriverSegment);
-		if DeviceType = drive then
-			writeln('Device Type: Drive')
-		else
-			writeln('Device Type: Device');
-	end;
-}
-{----------------------}
-	
-    Dev 	:= 1;
+writeln ('Here it goes - now we know how many devices are in this Nextor kernel.');
+
+	HowManyDevices := Dev - 1;
+
+    Dev 	:= 0;
     Part	:= 1;
     ErrorCodeInvalidPartition := 0;
     
     while Dev <= HowManyDevices do
     begin
     
-    writeln ('Device ', Dev, ' of ', HowManyDevices);
+    writeln ('Device (Dev): ', Dev, ' HowManyDevices: ', HowManyDevices);
     
 		case Devices[Dev].DeviceType of
 			Device:		begin
 							while ErrorCodeInvalidPartition <> ctIPART do
 							begin		(* Find primary and extended partitions. *)
-								GetInfoAboutPrimaryAndExtendedPartitionsOnDevice 
+								GatherInfoAboutPrimaryAndExtendedPartitionsOnDevice 
 								(Dev, Part, ErrorCodeInvalidPartition, ExtendedPartition);
 								Part := Part + 1;
+								
+								writeln ('Here it goes - Primary ou extended partition.');
 							end;
 							
 							ErrorCodeInvalidPartition := 0;
 							Part := 1;		(* Find all logical partitions. *)
 							while ErrorCodeInvalidPartition <> ctIPART do
 							begin
-								GetInfoAboutLogicalPartitionsOnDevice(Dev, Part, 
+								GatherInfoAboutLogicalPartitionsOnDevice(Dev, Part, 
 									ErrorCodeInvalidPartition, ExtendedPartition);
 								Part := Part + 1;
+								
+								writeln ('Here it goes - logical partition.');
 							end;
 
 (* Find all relationships between partitions and drive letters. *)
 
 							for j := 1 to maxdriveletters do
-							begin
-writeln('Here it goes - Drive letters on Partitions');
-								GetInfoAboutDriveLettersOnPartitions (j, Dev);
-							end;
+								GatherInfoAboutDriveLettersOnPartitions (j, Dev);
 						end;
 
 			Drive:		for j := 1 to maxdriveletters do
-							GetInfoAboutDrive (j, Dev);
+							GatherInfoAboutDrive (j, Dev);
 		end;
 		Dev := Dev + 1;
 	end;
 	    
-writeln ('Here it goes - found all partitions.');
+	    writeln ('Here it goes - found all partitions.');
 	    
-	GetInfoAboutRAMDisk (Dev);
+	GatherInfoAboutRAMDisk (Dev);
 
 writeln ('Here it goes - RAMDisk.');
 
+	HowManyDevices := Dev;
 end;
 
 procedure PrintInfoAboutPartitions;
@@ -641,7 +623,7 @@ BEGIN
 
 	writeln('Here it goes - start');
 
-    GetInfoAboutEverything;
+    GatherInfoAboutEverything;
 
     if paramcount = 0 then
     (*  Shows current information about zero allocation mode. *)

@@ -42,7 +42,7 @@ const
     ctCDRVR     = $7B; (* CDRVR routine.				        *)
     ctMAPDRV    = $7C; (* MAPDRV routine.                       *)
     ctZ80MODE   = $7D; (* Z80MODE routine.                      *)
-    ctGETCLUS   = $7E; (* GETCLUS routine. Not implemented.     *)
+    ctGETCLUS   = $7E; (* GETCLUS routine.					    *)
 
 (*	Constants which can be used to change states. *)
 
@@ -87,6 +87,9 @@ const
 	ctDEV_STATUS	=	$4166; (* Get the availability and change status for a device or logical unit.*)
 	ctLUN_INFO		=	$4169; (* Get info about a logical unit.*)
     
+(*	Max number of devices. *)    
+	maxdevices      = 16;
+    
 type
     TBinNumber  = array [0..7] of byte;
     TPunyString = string[4];
@@ -97,6 +100,7 @@ type
         DriveStatus, DriverSlot, DriverSegment,
         RelativeDriveNumber, DeviceIndex, LUN: byte;
         FirstDeviceSectorNumber: real;
+        StartSectorMajor, StartSectorMinor: integer;
     end;
     
     TDeviceDriver = record
@@ -236,18 +240,18 @@ begin   { Decimal2Hexa }
 	Decimal2Hexa	:=	hexstr;
 end; 
 
-function SizeBytes (Major, Minor: real): real;
-begin
-    SizeBytes := ((Major * 128) + (Minor / 512)) * 512;
-end;
-
 procedure FixBytes (var Aux1: real; var Aux2: real);
 begin
         if Aux1 < 0 then
-            Aux1 := 65536 + Aux1;
+            Aux1 := 32768 - Aux1;
 
         if Aux2 < 0 then
-            Aux2 := 65536 + Aux2;
+            Aux2 := 32768 - Aux2;
+end;
+
+function SizeBytes (Major, Minor: real): real;
+begin
+    SizeBytes := 65536 * Major + Minor;
 end;
 
 function GetNextorErrorCode (ErrorCode: byte): TShortString;
@@ -299,7 +303,8 @@ begin
 		Data[3] := 0;	(*Register B: Information to return - basic.*)
 		Data[4] := 0;	(*Register E*)
 		Data[5] := 0;	(*Register D*)
-	(*	We aren't using HL registers because it doesn´t matter to this routine. *)
+	(*	We didn't used HL registers because it doesn´t matter to this routine. *)
+
 	(*	Here is where the magic begins. *)
 		MSXBDOS ( regs );
 	(*	If there aren't any errors... There is a Nextor kernel here. *)
@@ -360,7 +365,9 @@ begin
     Regs.A := FreeOrTotalSpace;
     
     MSXBDOS ( regs );
-
+{
+writeln(' Major: ', Regs.DE, ' Minor: ', Regs.HL);
+}
 	if Regs.DE < 0 then
 		temp1 := 65536 + Regs.DE
 	else
@@ -498,6 +505,9 @@ begin
                                       65536 * Mem[regs.HL + 8] +
                                         256 * Mem[regs.HL + 7] +
                                               Mem[regs.HL + 6];
+		
+		StartSectorMajor := 256 * Mem[regs.HL + 9] + Mem[regs.HL + 8];
+		StartSectorMinor := 256 * Mem[regs.HL + 7] + Mem[regs.HL + 6];
     end;
 end;
 
@@ -538,7 +548,7 @@ begin
     
     (*  Make it so. *)
     MSXBDOS ( regs );
-    
+
     with PartitionResult do
     begin
         (* Partition type. *)
@@ -546,12 +556,13 @@ begin
         
         (* Partition type - string. *)
         case PartitionType of
-            0:      SPartitionType := 'Partition doesn''t exist.';
+            0:      SPartitionType := ' Partition doesn''t exist.';
             1:      SPartitionType := ' FAT12.';
             4:      SPartitionType := ' FAT16 less than 32 Mb.';
             5:      SPartitionType := ' Extended.';
             6:      SPartitionType := ' FAT16 (CHS).';
             14:     SPartitionType := ' FAT16 (LBA).';
+            15:     SPartitionType := ' Extended (LBA).';
             else    SPartitionType := ' Nevermind.';
         end;
         
@@ -562,7 +573,6 @@ begin
         (* Partition size in sectors. *)
         PartitionSizeMajor := regs.IX;
         PartitionSizeMinor := regs.IY;
-
     end;
 end;
 
@@ -693,4 +703,26 @@ begin
     MSXBDOS ( regs );
     
     SetZ80AccessMode := regs.D;
+end;
+
+function GetClusterSize (DriveLetter: char): byte;
+var
+	Data: string[16];
+begin
+	(* ctGETCLUS. *)
+	regs.C := ctGETCLUS;
+
+	(* Drive number (0=default, 1=A: etc.)*)
+	regs.A := (ord(upcase(DriveLetter)) - 65);
+
+	(* Cluster number - we get info from cluster 0. *)
+	regs.DE := 1;
+
+	(* Pointer to a 16 byte buffer. *)
+	regs.HL := Addr(Data);
+
+	MSXBDOS ( regs );
+
+	(* Function returns cluster size. *)
+	GetClusterSize := Mem[Regs.HL + 10];
 end;

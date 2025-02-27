@@ -267,8 +267,8 @@ begin
         GetInfo := true;
         
         (* Primary and Extended Partition. *)
-        PrimaryPartition    := 1;
-        ExtendedPartition   := 0;
+        PrimaryPartition    := 2;
+        ExtendedPartition   := 2;
 
         writeln (   ' Slot: ', DriverSlot, 
                     ' Segment: ', DriverSegment, 
@@ -279,8 +279,8 @@ begin
     
     GetInfoDevicePartition (DevicePartition, PartitionResult);
     
-    writeln('regs.A = ', regs.A);
-    writeln('regs.C = ', regs.C);
+    writeln('Error code: ', regs.A);
+    writeln('Status byte of the partition: ', regs.C);
     
     with PartitionResult do
     begin
@@ -537,6 +537,34 @@ begin
         writeln (' Sorry, this function call only runs in MSX Turbo-Rs.');
 end;
 
+procedure NextorKernelsExample;
+var
+	i, j: byte;
+	NextorDevices: TNextorDevices;
+
+begin
+
+	j := HowManyNextorDevices (NextorDevices);
+
+	writeln ('There is (are) ', j, ' Nextor kernel(s).');
+
+	for i := 1 to j do
+		writeln('Nextor devices found in slot ', NextorDevices[i].Slot, 
+				' subslot ', NextorDevices[i].Subslot);
+end;
+
+procedure GETCLUSExample;
+var
+	Character: char;
+	i: byte;
+	
+begin
+    writeln (' Which drive do you want to get info? ');
+    Character := upcase(readkey);
+    i := GetClusterSize (Character);
+    writeln (' Cluster size for drive ', Character, ' is ', i, ' sectors, or ', i * 512, ' bytes. ');
+end;
+
 var
 	Hexa: TBinNumber;
 	i: byte;
@@ -558,8 +586,10 @@ BEGIN
         writeln(' 8 - CDRVR (Call a routine in a device driver).');
         writeln(' 9 - MAPDRV (Map a drive letter to a driver and device).');
         writeln(' A - Z80MODE (Enable or disable the Z80 access mode for a driver).');
-        writeln(' B - Information about the lib and this program');
-        writeln(' F - End.');
+        writeln(' B - CDRVR - DEV_INFO (Tell how many Nextor kernels are, and their slots).');
+        writeln(' C - GETCLUS - Get information for a cluster on a FAT drive.');
+        writeln(' X - Information about the lib and this program');
+        writeln(' Z - End.');
         Character := upcase(readkey);
         writeln;
         case Character of 
@@ -576,7 +606,9 @@ BEGIN
                         MAPDRVExample;
                     end;
             'A': Z80MODEExample;
-            'B':    begin
+            'B': NextorKernelsExample;
+            'C': GETCLUSExample;
+            'X':    begin
                         writeln (' This code was written to have some examples of how we can use the Nextor'); 
                         writeln (' function calls. There are some function calls that wasn''t implemented, ');
                         writeln (' as FOUT, ZSTROUT, RDDRW, WRDRV and GETCLUS. The reasons may vary, such  ');
@@ -586,7 +618,7 @@ BEGIN
                         writeln (' important Nextor function calls. If you want to write the lost Nextor   ');
                         writeln (' function calls, be my guest. ');
                     end;
-            'F': exit;
+            'Z': exit;
         end;
         Character := readkey;
     end;
