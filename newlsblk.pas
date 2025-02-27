@@ -62,7 +62,8 @@ var
     i, j, k:            	byte;
     found:              	boolean;
     NextorKernels,
-    Partitions, 
+    Partitions,
+    TotalDevices,
     DriveLetters: 			byte;
     Drives:					array [0..maxdriveletters] of boolean;
     NextorDevices:			TNextorDevices;
@@ -139,7 +140,7 @@ end;
 
 procedure GetInfoAboutEverything;
 var
-    Dev, Part, ExtendedPartition, TotalDevices: byte;
+    Dev, Part, ExtendedPartition: byte;
     ErrorCodeInvalidDeviceDriver, ErrorCodeInvalidPartition: byte;
     Aux1, Aux2, Aux3, Aux4, Aux5: real;
 
@@ -584,17 +585,16 @@ end;
 
 procedure PrintInfoAboutPartitions;
 begin
-    writeln('There are ', NextorKernels, ' devices on your MSX.');
+    writeln('There are ', TotalDevices, ' devices on your MSX.');
 
 {-----------------------------------------------------------------------------}
-for i := 0 to NextorKernels do
+for i := 0 to TotalDevices do
 	case Devices[i].DeviceType of
 		Drive: writeln(i, ' Drive-based driver. ');
 		Device: writeln(i, ' Device-based driver. ');
 		RAMDisk: writeln(i, ' RAMDisk. ');
 	end;
 {-----------------------------------------------------------------------------}
-
     
     for i := 1 to maxdriveletters do
 		writeln (' Drive ', chr(64 + i), ': ', Drives[i]);
