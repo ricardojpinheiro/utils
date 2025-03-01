@@ -246,9 +246,6 @@ var
     Slot: byte;
     
 begin
-	write ('Slot (0-3): ');
-	read (Slot);
-	writeln;
     with DevicePartition do
     begin
         (* Driver Slot. *)
@@ -267,8 +264,8 @@ begin
         GetInfo := true;
         
         (* Primary and Extended Partition. *)
-        PrimaryPartition    := 2;
-        ExtendedPartition   := 2;
+        PrimaryPartition    := 1;
+        ExtendedPartition   := 0;
 
         writeln (   ' Slot: ', DriverSlot, 
                     ' Segment: ', DriverSegment, 
@@ -288,6 +285,9 @@ begin
     
         Aux1 := PartitionSizeMajor;
         Aux2 := PartitionSizeMinor;
+        
+writeln(Aux1:0:0, '  ', Aux2:0:0);
+        
         FixBytes(Aux1, Aux2);
 
         writeln (' Partition size (Sectors): ', SizeBytes (Aux1, Aux2):0:0, ' sectors.');
