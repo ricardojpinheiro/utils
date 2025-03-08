@@ -118,7 +118,7 @@ type
     end;
 
     TPartitionResult = record
-        PartitionType: byte;
+        PartitionType, ErrorCode, Status: byte;
         SPartitionType: string[32];
         StartSectorMajor, StartSectorMinor: integer;
         PartitionSizeMajor, PartitionSizeMinor: integer;
@@ -151,7 +151,7 @@ type
 		Slot, Subslot: byte;
 	end;
 
-	TNextorDevices = array [1..8] of TSlotSubslot;
+	THardwareDevices = array [1..8] of TSlotSubslot;
 
 var
     regs				: TRegs;
@@ -271,7 +271,7 @@ begin
     end;
 end;
 
-function HowManyNextorDevices (var NextorDevices: TNextorDevices): byte;
+function HowManyDevices (var HardwareDevices: THardwareDevices): byte;
 
 var
 	i, j, Slot, Subslot: byte;
@@ -282,7 +282,7 @@ begin
 	Slot := 1;
 	Subslot := 0;
 	
-	FillChar (NextorDevices, 	SizeOf(NextorDevices), 	0);
+	FillChar (HardwareDevices, 	SizeOf(HardwareDevices), 	0);
 	
 	for i := nNextorSlotNumber to nNextorSlotNumber + (ctMaxSlots * ctMaxSecSlots) do
 	begin
@@ -311,8 +311,8 @@ begin
 		if regs.A = 0 then
 		begin
 			j := j + 1;
-			NextorDevices[j].Slot := Slot;
-			NextorDevices[j].Subslot := Subslot;
+			HardwareDevices[j].Slot 	:= Slot;
+			HardwareDevices[j].Subslot 	:= Subslot;
 		end;
 		
 		Subslot := Subslot + 1;
@@ -322,7 +322,7 @@ begin
 			Subslot := 0;
 		end;
 	end;
-	HowManyNextorDevices := j;
+	HowManyDevices := j;
 end;
 
 procedure GetRALLOCStatus ( var DriveRalloc: TDriveStatus );
@@ -551,9 +551,15 @@ begin
 
     with PartitionResult do
     begin
+        (* Error code. *)
+        ErrorCode := regs.A;
+        
         (* Partition type. *)
         PartitionType := regs.B;
-        
+
+        (* Status. *)
+        Status := regs.C;
+
         (* Partition type - string. *)
         case PartitionType of
             0:      SPartitionType := ' Partition doesn''t exist.';
@@ -563,7 +569,7 @@ begin
             6:      SPartitionType := ' FAT16 (CHS).';
             14:     SPartitionType := ' FAT16 (LBA).';
             15:     SPartitionType := ' Extended (LBA).';
-            else    SPartitionType := ' Nevermind.';
+            else    SPartitionType := ' Whatever.';
         end;
         
         (* Start sector.*)

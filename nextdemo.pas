@@ -276,22 +276,26 @@ begin
     
     GetInfoDevicePartition (DevicePartition, PartitionResult);
     
-    writeln('Error code: ', regs.A);
-    writeln('Status byte of the partition: ', regs.C);
-    
     with PartitionResult do
     begin
+		writeln('Error code: ', ErrorCode);
+		writeln('Status byte of the partition: ', Status);
+
         writeln (' Partition type: ', PartitionType,': ', SPartitionType);
     
+		writeln (' PartitionSizeMajor: ', PartitionSizeMajor); 
+		writeln (' PartitionSizeMinor: ', PartitionSizeMinor);
+		
         Aux1 := PartitionSizeMajor;
         Aux2 := PartitionSizeMinor;
-        
-writeln(Aux1:0:0, '  ', Aux2:0:0);
         
         FixBytes(Aux1, Aux2);
 
         writeln (' Partition size (Sectors): ', SizeBytes (Aux1, Aux2):0:0, ' sectors.');
         writeln (' Partition size (Mb): 	 ', round(int(SizeBytes (Aux1, Aux2) / 1048576)), ' Mb. ');
+
+		writeln (' StartSectorMajor: ', StartSectorMajor); 
+		writeln (' StartSectorMinor: ', StartSectorMinor);
 
         Aux1 := StartSectorMajor;
         Aux2 := StartSectorMinor;
@@ -537,20 +541,20 @@ begin
         writeln (' Sorry, this function call only runs in MSX Turbo-Rs.');
 end;
 
-procedure NextorKernelsExample;
+procedure DevicesExample;
 var
 	i, j: byte;
-	NextorDevices: TNextorDevices;
+	HardwareDevices: THardwareDevices;
 
 begin
 
-	j := HowManyNextorDevices (NextorDevices);
+	j := HowManyDevices (HardwareDevices);
 
-	writeln ('There is (are) ', j, ' Nextor kernel(s).');
+	writeln ('There is (are) ', j, ' devices.');
 
 	for i := 1 to j do
-		writeln('Nextor devices found in slot ', NextorDevices[i].Slot, 
-				' subslot ', NextorDevices[i].Subslot);
+		writeln('Devices found in slot ', HardwareDevices[i].Slot, 
+				' subslot ', HardwareDevices[i].Subslot);
 end;
 
 procedure GETCLUSExample;
@@ -586,7 +590,7 @@ BEGIN
         writeln(' 8 - CDRVR (Call a routine in a device driver).');
         writeln(' 9 - MAPDRV (Map a drive letter to a driver and device).');
         writeln(' A - Z80MODE (Enable or disable the Z80 access mode for a driver).');
-        writeln(' B - CDRVR - DEV_INFO (Tell how many Nextor kernels are, and their slots).');
+        writeln(' B - CDRVR - DEV_INFO (Tell how many devices, and their slots).');
         writeln(' C - GETCLUS - Get information for a cluster on a FAT drive.');
         writeln(' X - Information about the lib and this program');
         writeln(' Z - End.');
@@ -606,7 +610,7 @@ BEGIN
                         MAPDRVExample;
                     end;
             'A': Z80MODEExample;
-            'B': NextorKernelsExample;
+            'B': DevicesExample;
             'C': GETCLUSExample;
             'X':    begin
                         writeln (' This code was written to have some examples of how we can use the Nextor'); 

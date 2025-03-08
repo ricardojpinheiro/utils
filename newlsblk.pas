@@ -61,12 +61,12 @@ var
     c:                  	char;
     i, j, k:            	byte;
     found:              	boolean;
-    NextorKernels,
+    NumberOfDevices,
     Partitions,
     TotalDevices,
     DriveLetters: 			byte;
-    Drives:					array [0..maxdriveletters] of boolean;
-    NextorDevices:			TNextorDevices;
+    Drives:					array [1..maxdriveletters] of boolean;
+    HardwareDevices:		THardwareDevices;
 
 procedure CommandLine (KindOf: byte);
 (*
@@ -145,14 +145,11 @@ var
     Aux1, Aux2, Aux3, Aux4, Aux5: real;
 
 	procedure GetInfoAboutDevices(Dev: byte; var ErrorCodeInvalidDeviceDriver: byte);
-
-(*		OK		*)
-
 	begin
 		with DeviceDriver do
 		begin
 			DriverIndex 	:= Dev;
-			DriverSlot 		:= NextorDevices[Dev].Slot;
+			DriverSlot 		:= HardwareDevices[Dev].Slot;
 			DriverSegment 	:= $FF;
 		end;
 		
@@ -172,7 +169,7 @@ var
 		end;
 		ErrorCodeInvalidDeviceDriver := regs.A;		
 {-----------------------------}	
-{
+
 		with Devices[Dev] do
 		begin
 			writeln (' Device: ', Dev, ' Device Number: ', DeviceDriver.DriverIndex);
@@ -182,7 +179,7 @@ var
 			else
 				writeln (' Device Type: Device.');
 		end;
-}
+
 {-----------------------------}
 	end;
 	
@@ -207,26 +204,28 @@ var
 		
 (*  Some information which is common for each device.                       *)
         
-        Devices[Device].LUN				:= 1;
+        FillChar (DevicePartition, SizeOf (DevicePartition), 0);
+        FillChar (PartitionResult, SizeOf (PartitionResult), 0);
         
-		DevicePartition.DriverSlot      := Devices[Device].DriverSlot;
+        Devices[Device].LUN				:= 1;
+ 		DevicePartition.DriverSlot      := Devices[Device].DriverSlot;	
 		DevicePartition.DriverSegment   := $FF;	{Devices[Device].DriverSegment;}
 		DevicePartition.DeviceIndex     := Device;
 		DevicePartition.LUN             := 1; 	{Devices[Device].LUN;}
 		DevicePartition.GetInfo         := true;
 
-(*  If the device has a driver, then it would have partitions. *)
+(*  If the device has a device driver, then it would have partitions. *)
             
 		ErrorCodeInvalidPartition 		:= 0;
 
 (*	First we'll map all primary and extended partitions. *)
-			
+
 		DevicePartition.PrimaryPartition 	:= Partition;
 		DevicePartition.ExtendedPartition	:= 0;
 		
 		GetInfoDevicePartition (DevicePartition, PartitionResult);
-		
-		ErrorCodeInvalidPartition := regs.A;
+
+		ErrorCodeInvalidPartition := PartitionResult.ErrorCode;
 
 		if (PartitionResult.PartitionType <> 0) AND (ErrorCodeInvalidPartition <> ctIPART) then
 		begin
@@ -234,6 +233,7 @@ var
 			if PartitionResult.PartitionType in [1, 4, 6, 14] then	(*	Primary partition. *)
 			begin
 				Devices[Device].Partitions[Partition].PartitionType 	:= primary;
+				Devices[Device].Partitions[Partition].PartitionNumber 	:= Partition;
 				SetDevicesWithInfo;
 			end;
 			
@@ -241,11 +241,11 @@ var
 			begin									
 				Devices[Device].Partitions[Partition].PartitionType 	:= extended;
 				ExtendedPartition 										:= Partition;
+				Devices[Device].Partitions[Partition].PartitionNumber 	:= Partition;
 				SetDevicesWithInfo;
 			end;
 		
 {-----------------------------------------------------------------------------}
-{
 writeln('Device ', Device, ' partition ', Partition, '  ', 
 		'Slot ', Devices[Device].DriverSlot, ' Segment: ', Devices[Device].DriverSegment, 
 		' LUN ', Devices[Device].LUN);
@@ -256,8 +256,12 @@ case Devices[Device].Partitions[Partition].PartitionType of
 	logical:   	writeln('It''s a logical partition.');
 end;
 
-writeln (	' Partition size Major: ', Devices[Device].Partitions[Partition].PartitionSizeMajor,
-			' Partition size Minor: ', Devices[Device].Partitions[Partition].PartitionSizeMinor);
+Aux1 := Devices[Device].Partitions[Partition].PartitionSizeMajor;
+Aux2 := Devices[Device].Partitions[Partition].PartitionSizeMinor;
+
+FixBytes(Aux1, Aux2);
+
+writeln (' Partition size: ', SizeBytes (Aux1, Aux2)/1048576:0:0);
 
 Aux1 := Devices[Device].Partitions[Partition].StartSectorMajor;
 Aux2 := Devices[Device].Partitions[Partition].StartSectorMinor;
@@ -265,8 +269,11 @@ Aux2 := Devices[Device].Partitions[Partition].StartSectorMinor;
 writeln(' Devices[', Device, '].Partitions[', Partition, '].StartSectorMajor: 	', Aux1:0:0);
 writeln(' Devices[', Device, '].Partitions[', Partition, '].StartSectorMinor: 	', Aux2:0:0);
 
+FixBytes(Aux1, Aux2);
+
+writeln (' First sector: ', SizeBytes (Aux1, Aux2):0:0);
+
 writeln;
-}
 {-----------------------------------------------------------------------------} 	
 		end;
 	end;
@@ -282,8 +289,6 @@ writeln;
         LogicalPartition := ExtendedPartition + Partition;
         
         Devices[Device].LUN				:= 1;
-        
-		DevicePartition.DriverSlot      := Devices[Device].DriverSlot;
 		DevicePartition.DriverSegment   := $FF; {Devices[Device].DriverSegment;}
 		DevicePartition.DeviceIndex     := Device;
 		DevicePartition.LUN             := 1; {Devices[Device].LUN;}
@@ -300,7 +305,7 @@ writeln;
 
 		GetInfoDevicePartition (DevicePartition, PartitionResult);
 		
-		ErrorCodeInvalidPartition := regs.A;
+		ErrorCodeInvalidPartition := PartitionResult.ErrorCode;
 
 		if (PartitionResult.PartitionType <> 0) AND (ErrorCodeInvalidPartition <> ctIPART) then
 		begin
@@ -318,7 +323,7 @@ writeln;
 				end;
 
 {------------------------------------------------------------------------------}
-{
+
 writeln('Device ', Device, ' partition ', LogicalPartition, '  ');
 writeln('Slot ', Devices[Device].DriverSlot, ' Segment: ', Devices[Device].DriverSegment, 
 		' LUN ', Devices[Device].LUN);
@@ -346,7 +351,9 @@ writeln(' Devices[', Device, '].Partitions[', LogicalPartition, '].StartSector: 
 
 writeln ('Error Code: ', regs.A);
 writeln ('PartitionResult.PartitionType: ', PartitionResult.PartitionType);
-}
+
+writeln;
+
 {-----------------------------------------------------------------------------} 	
 		end;
 	end;
@@ -505,15 +512,15 @@ begin
     Aux1 := 0;
     Aux2 := 0;
 
-(*	First of all, we should know how many Nextor kernels are in the MSX. *)
-	NextorKernels := HowManyNextorDevices (NextorDevices);
+(*	First of all, we should know how many devices are in the MSX. *)
+	NumberOfDevices := HowManyDevices (HardwareDevices);
 
 {-------------------------------}
-	writeln ('There is (are) ', NextorKernels, ' Nextor kernel(s).');
+	writeln ('There is (are) ', NumberOfDevices, ' devices.');
 
-	for i := 1 to NextorKernels do
-		writeln('Nextor devices found in slot ', NextorDevices[i].Slot, 
-				' subslot ', NextorDevices[i].Subslot);
+	for i := 1 to NumberOfDevices do
+		writeln('Nextor devices found in slot ', HardwareDevices[i].Slot, 
+				' subslot ', HardwareDevices[i].Subslot);
 {-------------------------------}
 	
 (*	There is a data structure which will guide all the discovery process. *)
@@ -521,7 +528,9 @@ begin
 	Dev := 1;
 	ErrorCodeInvalidDeviceDriver := 0;
 	
-	while (Dev <= maxdevices) AND (ErrorCodeInvalidDeviceDriver <> ctIDRVR) do
+	FillChar (DeviceDriver, SizeOf(DeviceDriver), chr(32));
+	
+	while (ErrorCodeInvalidDeviceDriver <> ctIDRVR) do
 	begin
 		GetInfoAboutDevices (Dev, ErrorCodeInvalidDeviceDriver);
 		Dev := Dev + 1;
@@ -529,6 +538,7 @@ begin
     
     TotalDevices := Dev - 1;
 	Dev := 1;
+	Part := 1;
 	ErrorCodeInvalidPartition := 0;
 	ErrorCodeInvalidDeviceDriver := 0;
 
@@ -536,38 +546,39 @@ begin
 	begin
 		case Devices[Dev].DeviceType of
 			Device:		begin
-							while ErrorCodeInvalidPartition <> ctIPART do
+							while (ErrorCodeInvalidPartition <> ctIPART) AND (Part <= 4) do
 							begin		
 
 (* Find primary and extended partitions. *)
-
 								GetInfoAboutPrimaryAndExtendedPartitionsOnDevice 
 								(Dev, Part, ErrorCodeInvalidPartition, ExtendedPartition);
 								Part := Part + 1;
 							end;
-							
-							ErrorCodeInvalidPartition := 0;
-							Part := 1;
+
+(*	There is a extended partition. So, there are logical partitions too. *)							
+							if (ExtendedPartition > 0) then
+							begin
+								ErrorCodeInvalidPartition := 0;
+								Part := 1;
 							
 (* Find all logical partitions. *)
-						
-
-							while ErrorCodeInvalidPartition <> ctIPART do
-							begin
-								GetInfoAboutLogicalPartitionsOnDevice(Dev, Part, 
-									ErrorCodeInvalidPartition, ExtendedPartition);
-								Part := Part + 1;
+								while ErrorCodeInvalidPartition <> ctIPART do
+								begin
+									GetInfoAboutLogicalPartitionsOnDevice(Dev, Part, 
+										ErrorCodeInvalidPartition, ExtendedPartition);
+									Part := Part + 1;
+								end;
 							end;
 
 (* Find all relationships between partitions and drive letters. *)
-
+{
 							Part := 1;
 							for j := 1 to maxdriveletters do
 							begin
 								GetInfoAboutDriveLettersOnPartitions (j, Dev, Part);
 								Part := Part + 1;
 							end;
-
+}
 						end;
 
 			Drive:		begin
@@ -668,6 +679,7 @@ var
 	temptext: TShortString;
 	templittletext: TTinyString;
 	tempint: TInteger;
+	tempreal: real;
 	
 begin
 	writeln('NAME     NEXTOR     SLT:SEG:LUN    RM     SIZE    RO  TYPE     LETTER');
@@ -701,7 +713,8 @@ begin
 								c:= Devices[i].Partitions[j].DriveAssignedToPartition;
 								if c <> chr(32) then
 								begin
-									Str (round(GetDriveSpaceInfo (c, ctGetTotalSpace) / 1024), templittletext);
+									tempreal := round(GetDriveSpaceInfo (c, ctGetTotalSpace) / 1024);
+									Str (tempreal:0:0, templittletext);
 									temptext := temptext + '  ' + templittletext + ' Mb  0   ';
 								end
 								else
@@ -750,7 +763,10 @@ begin
 							temptext := temptext + templittletext + ':';
 							Str (Devices[i].LUN, templittletext);
 							temptext := temptext + templittletext + '           1      ';
-							Str (GetDriveSpaceInfo (chr(72), ctGetTotalSpace):0:0, templittletext);
+							if Devices[i].DriveAssigned <> chr(32) then
+								Str (GetDriveSpaceInfo (chr(72), ctGetTotalSpace):0:0, templittletext)
+							else
+								templittletext := 'xx';
 							temptext := temptext + templittletext + ' Kb  0   ';
 							temptext := temptext + 'ramdisk  ';
                             if Devices[i].DriveAssigned <> chr(32) then
@@ -784,9 +800,10 @@ BEGIN
     (*  Shows current information about zero allocation mode. *)
 {
         PrintInfoAboutPartitions
-}
-		PrintInfo
 
+		PrintInfo
+}
+		writeln
     else
     begin
         for i := 1 to paramcount do
