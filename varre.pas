@@ -29,6 +29,10 @@ program Varredura;
 {$i d:msxdos2.pas}
 {$i d:nextor.pas}
 
+type
+	Upper = set of 'A'..'Z';
+	Lower = set of 'a'..'z';
+
 var
     MSXDOSVersao: TMSXDOSVersion;
     DriveStatus: TDriveStatus;
@@ -37,10 +41,17 @@ var
     DevicePartition: TDevicePartition;
     PartitionResult: TPartitionResult;
     RoutineDeviceDriver: TRoutineDeviceDriver;
-    NextorDevices: TNextorDevices;
+    NextorDevices: THardwareDevices;
     MapDrive: TMapDrive;
     Character: char;
-    i, j: byte;
+    i, j, k: byte;
+    
+    temtexto: boolean;
+    
+    TempString: TTinyString;
+
+	LowerAlphabet: Lower;
+	UpperAlphabet: Upper; 
 
 function Readkey : char;
 var
@@ -112,19 +123,31 @@ end;
 BEGIN
     Character := ' ';
 	clrscr;
-{
-	writeln(' Varre os dispositivos no MSX e aponta quais estao disponiveis. ');
-	GDRVRExample;
-}
-	j := HowManyNextorDevices (NextorDevices);
 
-	writeln ('There are ', j, ' Nextor kernel(s).');
+	TempString := '________________________________________________';
+	
+	writeln(TempString);
+	
+	if Pos ('_', TempString) = 1 then
+		TempString := 'DEVICE';
+	
+	writeln(TempString);
+	
+	TempString := '(345) Toshiba____________________________________';
 
-	for i := 1 to j do
-		writeln('Nextor devices found in slot ', NextorDevices[i].Slot, 
-				' subslot ', NextorDevices[i].Subslot);
+	writeln (TempString);
 
-	readln;
-	GDRVRExample;
+	i := Pos (chr(32), TempString);
+	
+	writeln (i);
+	
+	delete (TempString, 1, i);
+	
+	writeln (TempString);
+
+	i := Pos ('_', TempString);
+	delete (TempString, i, length(TempString));
+	
+	writeln(TempString);
 
 END.

@@ -289,8 +289,8 @@ begin
         Aux1 := PartitionSizeMajor;
         Aux2 := PartitionSizeMinor;
         
-        FixBytes(Aux1, Aux2);
-
+		FixBytes (Aux1, Aux2);
+      
         writeln (' Partition size (Sectors): ', SizeBytes (Aux1, Aux2):0:0, ' sectors.');
         writeln (' Partition size (Mb): 	 ', round(int(SizeBytes (Aux1, Aux2) / 1048576)), ' Mb. ');
 
@@ -311,10 +311,9 @@ var
 	a, b: byte;
 	c: char;
 	RealData: real;
-	Information: array[0..63] of byte;
-	Data: array[0..7] of byte;
 	LUNData: array [0..11] of byte;
-		
+	RoutineDeviceDriver: TRoutineDeviceDriver;
+
 begin
 (*	DEV_INFO. *)
 
@@ -324,62 +323,53 @@ begin
 
 	for j := 0 to 3 do
 	begin
-		FillChar(Data, 			SizeOf (Data), 			0);
-		FillChar(Information, 	SizeOf (Information), 	chr(32));
+		FillChar(RoutineDeviceDriver, 	SizeOf (RoutineDeviceDriver), 	chr(32));
 
-		regs.C 	:= ctCDRVR;
-
-(*	nNextorSlotNumber returns 129 if it's in slot 1.
-	My theory is that 129 = slot 1, 130 = slot 1-0...
-	And 134 = slot 2. *)		
-		
-		regs.A 	:= nNextorSlotNumber;
-{
-		regs.A 	:= 134;
-}
-		regs.B 	:= $FF;
-		regs.DE := ctDEV_INFO;
-		regs.HL := Addr(Data);
-
-		Data[0] := 0;	(*F*)
-		Data[1] := b;	(*A*)
-		Data[2] := 0;	(*C*)
-		Data[3] := j;	(*B*)
-		Data[4] := 0;	(*E*)
-		Data[5] := 0;	(*D*)
-		Data[6] := lo(Addr(Information));	(*L*)
-		Data[7] := hi(Addr(Information));	(*H*)
-
-		MSXBDOS ( regs );
-
-		if j = 0 then
+		with RoutineDeviceDriver do
 		begin
-			writeln('Nextor kernel slot: ', nNextorSlotNumber);
-			writeln('Device ', b);
-			writeln('Number of logical units: ',	Information[0]);
-			writeln('Device features flags: ', 		Information[1]);
-			writeln('Information type: ', Data[3], ' regs.A: ', regs.A);
-			writeln('Regs.B: ', regs.B, ' Regs.C: ', regs.C);
-			writeln('Regs.DE: ', regs.DE, ' Regs.HL: ', regs.HL);
-			writeln('Value of AF returned by the routine (Regs.IX): ', regs.IX);
+			RoutineAddress := ctDEV_INFO;
+			DriverSlot := nNextorSlotNumber;
+			DriverSegment := $FF;
+			
+			Data[0] := 0;	(*F*)
+			Data[1] := b;	(*A*)
+			Data[2] := 0;	(*C*)
+			Data[3] := j;	(*B*)
+			Data[4] := 0;	(*E*)
+			Data[5] := 0;	(*D*)
+			Data[6] := lo(Addr(Information));	(*L*)
+			Data[7] := hi(Addr(Information));	(*H*)
 		end;
-		case j of
-			0: write('Basic information: ');
-			1: write('Manufacturer name string: ');
-			2: write('Device name string: ');
-			3: write('Serial number string: ');
+		
+		CallRoutineInDeviceDriver (RoutineDeviceDriver);
+
+		with RoutineDeviceDriver do
+		begin
+			if j = 0 then
+			begin
+				writeln('Nextor kernel slot: ', nNextorSlotNumber);
+				writeln('Device ', b);
+				writeln('Number of logical units: ',	Information[0]);
+				writeln('Device features flags: ', 		Information[1]);
+				writeln('Information type: ', Data[3], ' regs.A: ', ErrorCode);
+			end;
+			case j of
+				0: write('Basic information: ');
+				1: write('Manufacturer name string: ');
+				2: write('Device name string: ');
+				3: write('Serial number string: ');
+			end;
+			for i := 0 to 63 do 
+				write(chr(Information[i]));
+			writeln;
 		end;
-		for i := 0 to 63 do 
-			write(chr(Information[i]));
-		writeln;
 	end;
+	
 (*	LUN_INFO. *)
 
 	writeln('LUN_INFO:');
 
-	FillChar(Data, 			SizeOf (Data), 			0);
-	FillChar(LUNData, 		SizeOf (LUNData), 		0);
-	FillChar(Information, 	SizeOf (Information), 	chr(32));
+	FillChar(RoutineDeviceDriver, 	SizeOf (RoutineDeviceDriver), 	chr(32));
 
 	writeln (' Which device do you want to get information? (1 to 7)');
 	c := readkey;
@@ -389,89 +379,95 @@ begin
 	c := readkey;
 	val (c, j, k);
 
-	regs.A := nNextorSlotNumber;
-	regs.B := $FF;
-	regs.DE := ctLUN_INFO;
-	regs.HL := Addr(Data);
-	regs.C 	:= ctCDRVR;
-
-	Data[0] := 0;	(*F*)
-	Data[1] := i;	(*A*)
-	Data[2] := 0;	(*C*)
-	Data[3] := j;	(*B*)
-	Data[4] := 0;	(*E*)
-	Data[5] := 0;	(*D*)
-	Data[6] := lo(Addr(LUNData));	(*L*)
-	Data[7] := hi(Addr(LUNData));	(*H*)
-
-	MSXBDOS ( regs );
-
-	writeln('Device ', i);
-	if regs.A = 0 then
+	with RoutineDeviceDriver do
 	begin
-		write('Medium type: ');
-		case LUNData[0] of
-			0: 		write('Block device.');
-			1: 		write('CD or DVD reader or recorder.');
-			else 	write('Unused (reserved for future use).');
-		end;
-		writeln;
+		RoutineAddress := ctLUN_INFO;
+		DriverSlot := nNextorSlotNumber;
+		DriverSegment := $FF;
 
-		RealData := 256 * LUNData[2] + LUNData[1];
-		writeln('Sector size: ', RealData:3:0);
-
-		k := LUNData[6];
-		RealData :=	16777216 * k;
-		k := LUNData[5];
-		RealData := RealData + 65536 * k;
-		k := LUNData[4];
-		RealData := RealData + 256 * k;
-		k := LUNData[3];
-		RealData := RealData + k;
-
-		writeln('Total number of available sectors: ', RealData:6:0);
-		writeln('LUN feature flags: ', LUNData[7]);
-		RealData := 256 * LUNData[9] + LUNData[8];
-		writeln('Number of cylinders: ', RealData:3:0);
-		writeln('Number of heads: ', LUNData[10]);
-		writeln('Number of sectors per track: ', LUNData[11]);
-	end
-	else
-		writeln('Error, device or LUN not available.');
-
-	FillChar(Data, 			SizeOf (Data), 			0);
-	FillChar(Information, 	SizeOf (Information), 	chr(32));
-		
-	writeln('DEV_STATUS: ');
-	regs.A := nNextorSlotNumber;
-	regs.B := $FF;
-	regs.DE := ctDEV_STATUS;
-	regs.HL := Addr(Data);
-	regs.C 	:= ctCDRVR;
-
-	for i := 1 to 7 do
-	begin
 		Data[0] := 0;	(*F*)
 		Data[1] := i;	(*A*)
 		Data[2] := 0;	(*C*)
-		Data[3] := 1;	(*B*)
+		Data[3] := j;	(*B*)
 		Data[4] := 0;	(*E*)
 		Data[5] := 0;	(*D*)
-		Data[6] := 0;	(*L*)
-		Data[7] := 0;	(*H*)
-{
-		Data[6] := lo(Addr(LUNData));	(*L*)
-		Data[7] := hi(Addr(LUNData));	(*H*)
-}
-		MSXBDOS ( regs );
+		Data[6] := lo(Addr(Information));	(*L*)
+		Data[7] := hi(Addr(Information));	(*H*)
+	end;
+
+	CallRoutineInDeviceDriver (RoutineDeviceDriver);
+
+	writeln('Device ', i);
+	
+	with RoutineDeviceDriver do
+	begin
+		if ErrorCode = 0 then
+		begin
+			write('Medium type: ');
+			case Information[0] of
+				0: 		write('Block device.');
+				1: 		write('CD or DVD reader or recorder.');
+				else 	write('Unused (reserved for future use).');
+			end;
+			writeln;
+
+			RealData := 256 * Information[2] + Information[1];
+			writeln('Sector size: ', RealData:3:0);
+
+			k := Information[6];
+			RealData :=	16777216 * k;
+			k := Information[5];
+			RealData := RealData + 65536 * k;
+			k := Information[4];
+			RealData := RealData + 256 * k;
+			k := Information[3];
+			RealData := RealData + k;
+
+			writeln('Total number of available sectors: ', RealData:6:0);
+			writeln('LUN feature flags: ', Information[7]);
+			RealData := 256 * Information[9] + Information[8];
+			writeln('Number of cylinders: ', RealData:3:0);
+			writeln('Number of heads: ', Information[10]);
+			writeln('Number of sectors per track: ', Information[11]);
+		end
+		else
+			writeln('Error, device or LUN not available.');
+	end;
 		
-		writeln (' Device ', Data[1], ' LUN ', Data[3]);
-		case Regs.A of
-			0: 	 writeln (Regs.A, ' Device or logical unit isn''t available, or the device or LUN supplied is invalid.');
-			1: 	 writeln (Regs.A, ' Device or logical unit is available, not changed since the last status request.');
-			2: 	 writeln (Regs.A, ' Device or logical unit is available, changed since the last status request.');
-			3: 	 writeln (Regs.A, ' Device or logical unit is available, not possible to determine if changed or not.');
-			else writeln (Regs.A, ' Who cares.');
+	writeln('DEV_STATUS: ');
+
+	FillChar(RoutineDeviceDriver, 	SizeOf (RoutineDeviceDriver), 	chr(32));
+	
+	with RoutineDeviceDriver do
+	begin
+		RoutineAddress := ctDEV_STATUS;
+		DriverSlot := nNextorSlotNumber;
+		DriverSegment := $FF;		
+
+		for i := 1 to 7 do
+		begin
+			Data[0] := 0;	(*F*)
+			Data[1] := i;	(*A*)
+			Data[2] := 0;	(*C*)
+			Data[3] := 1;	(*B*)
+			Data[4] := 0;	(*E*)
+			Data[5] := 0;	(*D*)
+			Data[6] := 0;	(*L*)
+			Data[7] := 0;	(*H*)
+
+			Data[6] := lo(Addr(LUNData));	(*L*)
+			Data[7] := hi(Addr(LUNData));	(*H*)
+
+			CallRoutineInDeviceDriver (RoutineDeviceDriver);
+			
+			writeln (' Device ', Data[1], ' LUN ', Data[3]);
+			case ErrorCode of
+				0: 	 writeln (ErrorCode, ' Device/logical unit not available, or the device or LUN supplied is invalid.');
+				1: 	 writeln (ErrorCode, ' Device/logical unit is available, not changed since the last status request.');
+				2: 	 writeln (ErrorCode, ' Device/logical unit is available, changed since the last status request.');
+				3: 	 writeln (ErrorCode, ' Device/logical unit is available, not possible to determine if changed or not.');
+				else writeln (ErrorCode, ' Who cares.');
+			end;
 		end;
 	end;
 end;

@@ -109,6 +109,7 @@ type
         NextorOrMSXDOSDriver, HasDRVCONFIG, DeviceOrDrive, 
         DriverMainNumber, DriverSecondaryNumber, DriverRevisionNumber: byte;
         DriverName: string[32];
+        ErrorCode: byte;
     end;
     
     TDevicePartition = record
@@ -128,6 +129,7 @@ type
 		DriverIndex, DriverSlot, DriverSegment: byte;
 		RoutineAddress: integer;
 		Data: array[0..7] of byte;
+		Information: array[0..63] of byte;
 		ResultBC, ResultDE, ResultHL,ResultIX: integer;
 		ErrorCode: byte;
 	end;
@@ -242,11 +244,11 @@ end;
 
 procedure FixBytes (var Aux1: real; var Aux2: real);
 begin
-        if Aux1 < 0 then
-            Aux1 := 32768 - Aux1;
+	if Aux1 < 0 then
+		Aux1 := 32768 + Abs(Aux1);
 
-        if Aux2 < 0 then
-            Aux2 := 32768 - Aux2;
+	if Aux2 < 0 then
+		Aux2 := 32768 + Abs(Aux2);
 end;
 
 function SizeBytes (Major, Minor: real): real;
@@ -468,6 +470,7 @@ begin
             DriverName[i - 7]   := chr(Mem[regs.HL + i]);
             
         DriverName[0] := chr(sizeof(DriverName));
+        ErrorCode := regs.A;
     end;
 end;
 
