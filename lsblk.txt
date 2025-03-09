@@ -1,0 +1,9 @@
+Nível do problema	-	Descrição				- Problema em si.
+Alto 			- Número do setor inicial em cada partição 	- não está encontrando.
+Médio			- Tamanho da partição estendida			- está errado.
+Alto 			- Número do setor inicial da partição estendida	- não está encontrando.
+Alto			- Tamanho das partições lógicas			- está errado.
+
+
+65536×2+(65536−32766)
+

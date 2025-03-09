@@ -46,6 +46,7 @@ type
 
     TDevicesOnMSX = record
 		ManufacturerName: TString;
+		DeviceSize: real;
 		Size: integer;
         DeviceNumber, DriverSlot, DriverSegment, LUN, NumberOfPartitions: byte;
         Case DeviceType: TDeviceType of
@@ -70,6 +71,7 @@ var
     Drives:					array [1..maxdriveletters] of boolean;
     HardwareDevices:		THardwareDevices;
     TempString:				TTinyString;
+    RoutineDeviceDriver: 	TRoutineDeviceDriver;
 
 procedure CommandLine (KindOf: byte);
 (*
@@ -148,20 +150,15 @@ var
     Aux1, Aux2, Aux3, Aux4: real;
 
 	procedure GetInfoAboutDevices(Dev: byte; var ErrorCodeInvalidDeviceDriver: byte);
-	var
-		RoutineDeviceDriver: TRoutineDeviceDriver;
-		i: byte;
-		
 	begin
-		
-		FillChar (TempString, SizeOf(TempString), chr(32));
-		
 		with DeviceDriver do
 		begin
 			DriverIndex 	:= Dev;
 			DriverSlot 		:= HardwareDevices[Dev].Slot;
 			DriverSegment 	:= $FF;
 		end;
+
+(*	Get all info about devices. *)		
 		
 		GetInfoDeviceDriver (DeviceDriver);
 	
@@ -180,8 +177,10 @@ var
 			ErrorCodeInvalidDeviceDriver := DeviceDriver.ErrorCode;
 		end;
 
-		FillChar (RoutineDeviceDriver, SizeOf(RoutineDeviceDriver), chr(32));
+(*	Now we'll get the manufacturer's name. *)
 
+		FillChar (RoutineDeviceDriver, SizeOf(RoutineDeviceDriver), chr(32));
+		
 		with RoutineDeviceDriver do
 		begin
 			RoutineAddress := ctDEV_INFO;
@@ -738,6 +737,42 @@ begin
 		FillChar (temptext, SizeOf (temptext) , chr(32));
 		case Devices[i].DeviceType of
 			Device: 	begin
+
+(*	Here we'll get device's size. *)
+
+							FillChar (RoutineDeviceDriver, SizeOf (RoutineDeviceDriver) , chr(32));
+							
+							with RoutineDeviceDriver do
+							begin
+								RoutineAddress := ctLUN_INFO;
+								DriverSlot := nNextorSlotNumber;
+								DriverSegment := $FF;
+
+								Data[0] := 0;	(*F*)
+								Data[1] := i;	(*A*)
+								Data[2] := 0;	(*C*)
+								Data[3] := Devices[i].LUN; 	(*B*)
+								Data[4] := 0;	(*E*)
+								Data[5] := 0;	(*D*)
+								Data[6] := lo(Addr(Information));	(*L*)
+								Data[7] := hi(Addr(Information));	(*H*)
+
+								CallRoutineInDeviceDriver (RoutineDeviceDriver);		
+
+								j := Information[6];
+								tempreal :=	16777216 * j;
+								j := Information[5];
+								tempreal := tempreal + 65536 * j;
+								j := Information[4];
+								tempreal := tempreal + 256 * j;
+								j := Information[3];
+								tempreal := tempreal + j;
+								
+								Devices[i].DeviceSize := round(int(tempreal / 2048));
+							end;
+
+(*	First line, with manufacturer name, slot and subslot, and more info. *)			
+
 							Str(i, templittletext);
 							j := 12 - length(Devices[i].ManufacturerName);
 							temptext 	:= 	Devices[i].ManufacturerName + templittletext;
@@ -755,9 +790,22 @@ begin
 							temptext 	:= temptext + templittletext + '   ';
 							Str (Devices[i].LUN, templittletext);
 
-							temptext 	:= temptext + templittletext + '      NO     xxxx Mb    NO     disk';
-							writeln(temptext);
+							temptext 	:= temptext + templittletext + '      NO     ';
+
+							FillChar (templittletext, SizeOf (templittletext), chr(32));
 							
+							Str (Devices[i].DeviceSize:0:0, templittletext);
+							
+							j := 4 - length(templittletext);
+							for k := 1 to j do
+								insert (chr(32), templittletext, 1);
+
+							temptext 	:= temptext + templittletext + ' Mb    NO     disk';
+							
+							writeln(temptext);
+
+(*	Let's print info about partitions. *)							
+
 							j := 1;
 							while ( j <= Devices[i].NumberOfPartitions ) do
 							begin

@@ -415,12 +415,24 @@ begin
 			writeln('Sector size: ', RealData:3:0);
 
 			k := Information[6];
+			
+writeln(k);			
+			
 			RealData :=	16777216 * k;
 			k := Information[5];
+			
+writeln(k);			
+			
 			RealData := RealData + 65536 * k;
 			k := Information[4];
+			
+writeln(k);			
+			
 			RealData := RealData + 256 * k;
 			k := Information[3];
+			
+writeln(k);			
+			
 			RealData := RealData + k;
 
 			writeln('Total number of available sectors: ', RealData:6:0);

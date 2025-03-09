@@ -1,11 +1,13 @@
-Isto e um teste.
-
-
-
-	Teste, seu ze.
-
-
-
-
-
-		Entendeu?
+There is (are) 1 Nextor kernel(s).
+Nextor devices found in slot 1 subslot 0
+NAME     NEXTOR     SLT:SEG:LUN    RM     SIZE    RO  TYPE     LETTER
+DEVICE1       1     1:255:1         0     xxx Mb  0   disk
+|_part1       1     1:255:1         0      40 Mb  0   primary  A:
+|_part2       1     1:255:1         0     xxx Mb  0   extended 
+  |_part3     1     1:255:1         0      40 Mb  0   logical  C:
+  |_part4     1     1:255:1         0      32 Mb  0   logical  D:
+  |_part5     1     1:255:1         0     xxx Mb  0   logical  
+  |_part6     1     1:255:1         0     xxx Mb  0   logical  
+DRIVE         0     130:255:32      1     720 Kb  0   disk     
+DRIVE         0     139:255:32      1     720 Kb  0   disk     E:
+RAMDISK       0     0:0:0           1      60 Kb  0   ramdisk  H:

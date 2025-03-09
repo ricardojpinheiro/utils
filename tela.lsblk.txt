@@ -1,0 +1,15 @@
+NAME		NEXTOR SLT:SUB:LUN	RM	SIZE	RO	TYPE	MOUNTPOINT
+DEVICE			x:y:z		0/1	xxx Mb  0/1   disk/part	(DRIVE LETTER)
+
+DEVICE1		1	1:0		0	xxx Mb	0	disk	
+ \_part1	1	1:0		0	xxx Mb	0	primary	A:
+ \_part2	1	1:0		0	000 Mb	0	extended	
+   \_part3	1	1:0		0	yyy Mb  0	logical	C:
+   \_part4	1	1:0		0	zzz Mb	0	logical	D:
+   \_part5	1	1:0		0	www Mb	0	logical
+   \_part6	1	1:0		0	ttt Mb	0	logical
+   
+DRIVE2		0	x:y		1	720 Kb	0	disk		
+DRIVE3		0	x:y		1	720 Kb	0	disk	E:
+RAMDISK		0	x:y		0	??? Kb	0	ramdisk	H:
+ 
