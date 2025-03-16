@@ -145,7 +145,7 @@ end;
 
 procedure GetInfoAboutEverything;
 var
-    Dev, Part, ExtendedPartition: byte;
+    Dev, Part, ExtendedPartition, Slot, Subslot: byte;
     ErrorCodeInvalidDeviceDriver, ErrorCodeInvalidPartition: byte;
     Aux1, Aux2, Aux3, Aux4: real;
 
@@ -154,7 +154,7 @@ var
 		with DeviceDriver do
 		begin
 			DriverIndex 	:= Dev;
-			DriverSlot 		:= HardwareDevices[Dev].Slot;
+			DriverSlot 		:= HardwareDevices[Dev];
 			DriverSegment 	:= $FF;
 		end;
 
@@ -164,7 +164,7 @@ var
 	
 		with Devices[Dev] do
 		begin
-			DeviceNumber 		:= DeviceDriver.DriverIndex;
+			DeviceNumber 		:= Dev;
 			DriverSlot      	:= DeviceDriver.DriverSlot;
             DriverSegment   	:= DeviceDriver.DriverSegment;
             NumberOfPartitions 	:= 0;
@@ -173,9 +173,18 @@ var
 				DeviceType 			:= Drive    	(* Drive-based driver.  *)
 			else
 				DeviceType 			:= Device;   	(* Device-based driver. *)
-
-			ErrorCodeInvalidDeviceDriver := DeviceDriver.ErrorCode;
 		end;
+
+{---------------------------------------------------------------------------}
+
+(* Forçando a barra para setar o 2o device como... Device. Provavelmente será
+   necessário trocar a forma de detecção, usando DEV_INFO e LUN_INFO. *)
+
+if Dev = 2 then
+	Devices[Dev].DeviceType := Device;
+{---------------------------------------------------------------------------}
+
+		ErrorCodeInvalidDeviceDriver := DeviceDriver.ErrorCode;
 
 (*	Now we'll get the manufacturer's name. *)
 
@@ -183,9 +192,9 @@ var
 		
 		with RoutineDeviceDriver do
 		begin
-			RoutineAddress := ctDEV_INFO;
-			DriverSlot := nNextorSlotNumber;
-			DriverSegment := $FF;
+			RoutineAddress 	:= ctDEV_INFO;
+			DriverSlot 		:= DeviceDriver.DriverSlot;
+			DriverSegment 	:= DeviceDriver.DriverSegment;
 			
 			Data[0] := 0;	(*F*)
 			Data[1] := Dev;	(*A*)
@@ -201,9 +210,11 @@ var
 		
 		for i := 1 to SizeOf(RoutineDeviceDriver.Information) do
 			Devices[Dev].ManufacturerName[i] := chr(RoutineDeviceDriver.Information[i]);
+			
+			Str(Dev, TempString);
 		
 		if Pos (chr(32), Devices[Dev].ManufacturerName) = 1 then
-			Devices[Dev].ManufacturerName := 'DEVICE'
+			Devices[Dev].ManufacturerName := 'DEVICE' + TempString
 		else
 		begin
 			i := Pos (chr(32), Devices[Dev].ManufacturerName);
@@ -214,17 +225,16 @@ var
 		end;
 				
 {-----------------------------}	
-{
-		with Devices[Dev] do
-		begin
-			writeln (' Device: ', Dev, ' Device Number: ', DeviceDriver.DriverIndex);
-			writeln (' Driver Slot: ', DeviceDriver.DriverSlot, ' Driver Segment: ', DeviceDriver.DriverSegment);
-			if DeviceDriver.DeviceOrDrive = 0 then
-				writeln (' Device Type: Drive.')
-			else
-				writeln (' Device Type: Device.');
-		end;
-}
+
+			with Devices[Dev] do
+			begin
+				writeln (' Device: ', Dev, ' Manufacturer Name: ', ManufacturerName, ' Error code: ', DeviceDriver.ErrorCode);
+				writeln (' Driver Slot: ', DeviceDriver.DriverSlot, ' Driver Segment: ', DeviceDriver.DriverSegment);
+				if DeviceDriver.DeviceOrDrive = 0 then
+					writeln (' Device Type: Drive.')
+				else
+					writeln (' Device Type: Device.');
+			end;
 {-----------------------------}
 	end;
 	
@@ -540,11 +550,11 @@ writeln;
 					Drives[8] := true;	(*	This drive letter is busy. *)
 
 {------------------------------------------------------------------------------}
-{
+
 write ('Found drive letter ', PhysicalDrive);
 write ('. It''s related to device ', Device, ' slot ', Devices[Device].DriverSlot);
 writeln;
-}
+
 {------------------------------------------------------------------------------}
 				end;
 			end;
@@ -560,38 +570,39 @@ begin
     Aux2 := 0;
 
 (*	First of all, we should know how many devices are in the MSX. *)
-	NumberOfDevices := HowManyDevices (HardwareDevices);
+	NumberOfDevices := HowManyNextorKernels (HardwareDevices);
 
 {-------------------------------}
-{
-	writeln ('There is (are) ', NumberOfDevices, ' devices.');
+
+	writeln ('We have ', NumberOfDevices, ' Nextor devices.');
 
 	for i := 1 to NumberOfDevices do
-		writeln('Nextor devices found in slot ', HardwareDevices[i].Slot, 
-				' subslot ', HardwareDevices[i].Subslot);
-}
+	begin
+		SplitSlotNumber (HardwareDevices[i], Slot, Subslot);
+		writeln ('Nextor kernels found in slot ', Slot, ' subslot ', Subslot);
+	end;
+
 {-------------------------------}
 	
 (*	There is a data structure which will guide all the discovery process. *)
 
-	Dev := 1;
-	ErrorCodeInvalidDeviceDriver := 0;
-	
-	FillChar (DeviceDriver, SizeOf(DeviceDriver), chr(32));
-	
+	Dev := 0;
+
 	while (ErrorCodeInvalidDeviceDriver <> ctIDRVR) do
 	begin
-		GetInfoAboutDevices (Dev, ErrorCodeInvalidDeviceDriver);
+		FillChar (DeviceDriver, SizeOf(DeviceDriver), 0);
+		ErrorCodeInvalidDeviceDriver := 0;
 		Dev := Dev + 1;
+		GetInfoAboutDevices (Dev, ErrorCodeInvalidDeviceDriver);
     end;
     
-    TotalDevices := Dev - 1;
+    TotalDevices := Dev;
 	Dev := 1;
 	Part := 1;
 	ErrorCodeInvalidPartition := 0;
 	ErrorCodeInvalidDeviceDriver := 0;
 
-	while (Dev <= TotalDevices) AND (ErrorCodeInvalidDeviceDriver <> ctIDRVR) do
+	for Dev := 1 to TotalDevices do
 	begin
 		case Devices[Dev].DeviceType of
 			Device:		begin
@@ -611,7 +622,7 @@ begin
 								Part := 1;
 							
 (* Find all logical partitions. *)
-								while ErrorCodeInvalidPartition <> ctIPART do
+								while (ErrorCodeInvalidPartition <> ctIPART) do
 								begin
 									GetInfoAboutLogicalPartitionsOnDevice(Dev, Part, 
 										ErrorCodeInvalidPartition, ExtendedPartition);
@@ -627,7 +638,6 @@ begin
 								GetInfoAboutDriveLettersOnPartitions (j, Dev, Part);
 								Part := Part + 1;
 							end;
-
 						end;
 
 			Drive:		begin
@@ -636,11 +646,9 @@ begin
 						end;
 
 		end;
-		Dev := Dev + 1;
     end;
-
-	GetInfoAboutRAMDisk (Dev - 1);
-
+writeln(' RAMDisk: ', Dev);    
+	GetInfoAboutRAMDisk (TotalDevices);
 end;
 
 procedure PrintInfoAboutPartitions;
@@ -731,6 +739,16 @@ var
 	tempreal: real;
 	
 begin
+
+{-----------------------------------------------------------------------------}
+for i := 1 to TotalDevices do
+	case Devices[i].DeviceType of
+		Drive: writeln(i, ' Drive-based driver. ');
+		Device: writeln(i, ' Device-based driver. ');
+		RAMDisk: writeln(i, ' RAMDisk. ');
+	end;
+{-----------------------------------------------------------------------------}
+
 	writeln('NAME       NEXTOR  SLOT:SUB:LUN  REMOVABLE SIZE    READONLY  TYPE     LETTER');
 	for i := 1 to TotalDevices do
 	begin
@@ -920,10 +938,11 @@ BEGIN
 
     if paramcount = 0 then
     (*  Shows current information about zero allocation mode. *)
-{
+
         PrintInfoAboutPartitions
-}
+{
 		PrintInfo
+}
     else
     begin
         for i := 1 to paramcount do

@@ -52,6 +52,8 @@ var
 
 	LowerAlphabet: Lower;
 	UpperAlphabet: Upper; 
+	LINL40: byte absolute $F3AE;
+	Data: array[0..7] of byte;
 
 function Readkey : char;
 var
@@ -66,88 +68,40 @@ begin
      qqc := 0;
 end;
 
-procedure GDRVRExample;
-var
-	i, j: byte;
-	c: char;
-	
-begin
-    FillChar(DeviceDriver, SizeOf ( DeviceDriver ), 0 );
-
-	for i := 1 to 7 do
-	begin
-		with DeviceDriver do
-		begin
-			DriverIndex 	:= i;
-			DriverSlot 		:= nNextorSlotNumber;
-			DriverSegment 	:= $FF;
-		end;
-
-		c := readkey;
-
-		GetInfoDeviceDriver (DeviceDriver);
-
-		If regs.A = $B6 then
-			writeln ('There isn''t a device number ', i)
-		else
-			begin
-				writeln;
-				with DeviceDriver do
-				begin
-					writeln (' Driver Index: ', DriverIndex);
-					writeln (' Driver Slot: ', DriverSlot);
-					writeln (' Driver Segment: ', DriverSegment);
-					writeln (' How many assigned drive letters: ', DriveLettersAtBootTime);
-					writeln (' First drive letter: ', FirstDriveLetter);
-					if NextorOrMSXDOSDriver = 0 then
-						writeln (' It''s a MSX-DOS driver.')
-					else
-						writeln (' It''s a Nextor driver.');
-					if HasDRVCONFIG = 0 then
-						writeln (' This driver implements the DRV_CONFIG routine.')
-					else
-						writeln (' This driver doesn''t implements the DRV_CONFIG routine.');
-					if DeviceOrDrive = 0 then
-						writeln (' This is a drive-based driver.')
-					else
-						writeln (' This is a device-based driver.');
-					writeln (' Driver number: ' , DriverMainNumber, '.' 
-												, DriverSecondaryNumber, '.' 
-												, DriverRevisionNumber);
-					writeln (' Driver Name: ', DriverName);
-				end;
-		end;
-	end;
-end;
-
 BEGIN
     Character := ' ';
 	clrscr;
 
-	TempString := '________________________________________________';
+	writeln(LINL40);
 	
-	writeln(TempString);
-	
-	if Pos ('_', TempString) = 1 then
-		TempString := 'DEVICE';
-	
-	writeln(TempString);
-	
-	TempString := '(345) Toshiba____________________________________';
+	for i := 0 to ctMaxSlots - 1 do
+		for j := 0 to CtMaxSecSlots - 1 do
+		begin
+		(*	Call a routine in a device driver *)
+			regs.C 	:= ctCDRVR;
+		(*	Driver slot number, from $F348 to $F348 + (4 * 4) *)
+			regs.A 	:= MakeSlotNumber (i, j);
+		(*	Driver segment number - $FF for ROM drivers. *)
+			regs.B 	:= $FF;
+		(*	Routine address - BTW, DEV_INFO ($4163). *)
+			regs.DE := ctDEV_INFO;
+		(*	Address of a 8 byte buffer with the input register values for DEV_INFO. *)
+			regs.HL := Addr(Data);
 
-	writeln (TempString);
+			Data[0] := 0;	(*Register F*)
+			Data[1] := i;	(*Register A: Device index (1 to 7).*)
+			Data[2] := 0;	(*Register C*)
+			Data[3] := 0;	(*Register B: Information to return - basic.*)
+			Data[4] := 0;	(*Register E*)
+			Data[5] := 0;	(*Register D*)
+		(*	We didn't used HL registers because it doesn´t matter to this routine. *)
 
-	i := Pos (chr(32), TempString);
-	
-	writeln (i);
-	
-	delete (TempString, 1, i);
-	
-	writeln (TempString);
+		(*	Here is where the magic begins. *)
+			MSXBDOS ( regs );
+			
+		(*	If there aren't any errors... There is a Nextor kernel here. *)
 
-	i := Pos ('_', TempString);
-	delete (TempString, i, length(TempString));
-	
-	writeln(TempString);
+			writeln ('Slot: ', i, ' Subslot: ', j, ' Slot: ', MakeSlotNumber (i, j), ' Error Code: ', regs.A); 
 
+		end;
 END.

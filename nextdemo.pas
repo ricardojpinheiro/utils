@@ -37,6 +37,7 @@ var
     PartitionResult: TPartitionResult;
     RoutineDeviceDriver: TRoutineDeviceDriver;
     MapDrive: TMapDrive;
+    HardwareDevices: THardwareDevices;
     Character: char;
 
 function Readkey : char;
@@ -171,13 +172,19 @@ begin
 end;
 
 procedure GDRVRExample;
+var
+	i, j: byte;
+
 begin
     FillChar(DeviceDriver, SizeOf ( DeviceDriver ), 0 );
 
+	write (' Which device do you want to get info? (1-7): ');
+	readln(i);
+
     with DeviceDriver do
     begin
-        DriverIndex := 0;
-        DriverSlot := nNextorSlotNumber;
+        DriverIndex := i;
+        DriverSlot := HardwareDevices[1];
         DriverSegment := $FF;
     end;
 
@@ -243,9 +250,13 @@ end;
 procedure GPARTExample;
 var 
     Aux1, Aux2: real;
-    Slot: byte;
+    i, Slot: byte;
     
 begin
+
+	write (' Which device do you want to get info? (1-7): ');
+	readln(i);
+
     with DevicePartition do
     begin
         (* Driver Slot. *)
@@ -255,7 +266,7 @@ begin
         DriverSegment := $FF;
         
         (* Device Index. *)
-        DeviceIndex := 1;
+        DeviceIndex := i;
         
         (* LUN. *)
         LUN := 1;
@@ -415,24 +426,15 @@ begin
 			writeln('Sector size: ', RealData:3:0);
 
 			k := Information[6];
-			
-writeln(k);			
-			
 			RealData :=	16777216 * k;
+
 			k := Information[5];
-			
-writeln(k);			
-			
 			RealData := RealData + 65536 * k;
+
 			k := Information[4];
-			
-writeln(k);			
-			
 			RealData := RealData + 256 * k;
+
 			k := Information[3];
-			
-writeln(k);			
-			
 			RealData := RealData + k;
 
 			writeln('Total number of available sectors: ', RealData:6:0);
@@ -445,7 +447,7 @@ writeln(k);
 		else
 			writeln('Error, device or LUN not available.');
 	end;
-		
+{
 	writeln('DEV_STATUS: ');
 
 	FillChar(RoutineDeviceDriver, 	SizeOf (RoutineDeviceDriver), 	chr(32));
@@ -482,6 +484,7 @@ writeln(k);
 			end;
 		end;
 	end;
+}	
 end;
 
 procedure MAPDRVExample;
@@ -549,32 +552,42 @@ begin
         writeln (' Sorry, this function call only runs in MSX Turbo-Rs.');
 end;
 
-procedure DevicesExample;
+procedure NextorKernelsExample (PrintOrNot: boolean);
 var
-	i, j: byte;
-	HardwareDevices: THardwareDevices;
+	i, j, Slot, Subslot: byte;
 
 begin
+	j := HowManyNextorKernels (HardwareDevices);
 
-	j := HowManyDevices (HardwareDevices);
-
-	writeln ('There is (are) ', j, ' devices.');
-
-	for i := 1 to j do
-		writeln('Devices found in slot ', HardwareDevices[i].Slot, 
-				' subslot ', HardwareDevices[i].Subslot);
+	if PrintOrNot then
+	begin
+		writeln ('We have ', j, ' Nextor kernel(s).');
+		for i := 1 to j do
+		begin
+			SplitSlotNumber (HardwareDevices[i], Slot, Subslot);
+			writeln ('Nextor kernels found in slot ', Slot, ' subslot ', Subslot);
+		end;
+	end;
 end;
 
 procedure GETCLUSExample;
 var
 	Character: char;
 	i: byte;
+	Aux1: real;
 	
 begin
+	Aux1 := 0;
     writeln (' Which drive do you want to get info? ');
     Character := upcase(readkey);
     i := GetClusterSize (Character);
-    writeln (' Cluster size for drive ', Character, ' is ', i, ' sectors, or ', i * 512, ' bytes. ');
+		
+	Aux1 := i * 512;
+	
+	If Aux1 < 0 then
+		Aux1 := 32768 + Abs(Aux1);
+
+    writeln (' Cluster size for drive ', Character, ' is ', i, ' sectors, or ', Aux1:0:0, ' bytes. ');
 end;
 
 var
@@ -582,6 +595,7 @@ var
 	i: byte;
 
 BEGIN
+	NextorKernelsExample (false);
     Character := ' ';
     while (Character <> 'F') do
     begin
@@ -598,7 +612,7 @@ BEGIN
         writeln(' 8 - CDRVR (Call a routine in a device driver).');
         writeln(' 9 - MAPDRV (Map a drive letter to a driver and device).');
         writeln(' A - Z80MODE (Enable or disable the Z80 access mode for a driver).');
-        writeln(' B - CDRVR - DEV_INFO (Tell how many devices, and their slots).');
+        writeln(' B - CDRVR - DEV_INFO (Tell how many Nextor kernels, and their slots).');
         writeln(' C - GETCLUS - Get information for a cluster on a FAT drive.');
         writeln(' X - Information about the lib and this program');
         writeln(' Z - End.');
@@ -618,17 +632,17 @@ BEGIN
                         MAPDRVExample;
                     end;
             'A': Z80MODEExample;
-            'B': DevicesExample;
+            'B': NextorKernelsExample (true);
             'C': GETCLUSExample;
             'X':    begin
-                        writeln (' This code was written to have some examples of how we can use the Nextor'); 
-                        writeln (' function calls. There are some function calls that wasn''t implemented, ');
-                        writeln (' as FOUT, ZSTROUT, RDDRW, WRDRV and GETCLUS. The reasons may vary, such  ');
-                        writeln (' as lack of interest or the lack of need: FOUT and ZSTROUT, for example, ');
-                        writeln (' can even be implemented, but there are some routines which are as good  ');
-                        writeln (' as these Nextor function calls. So, there were implemented only the most');
-                        writeln (' important Nextor function calls. If you want to write the lost Nextor   ');
-                        writeln (' function calls, be my guest. ');
+                        writeln (' This code was written to have some examples of  how we can use the Nextor '); 
+                        writeln (' function calls.  There are some  function calls that wasn''t  implemented,');
+                        writeln (' as  FOUT, ZSTROUT, RDDRW, and WRDRV.  The reasons may vary, such as  lack');
+                        writeln (' of interest or the lack of need:  FOUT and ZSTROUT, for example, can even ');
+                        writeln (' be implemented,  but there are some routines  which are as good as  these');
+                        writeln (' Nextor  function  calls.  So,  I wrote code only to  have all the  Nextor');
+                        writeln (' function calls that I thought it was important.  If you want to write the');
+                        writeln (' missing Nextor function calls, be my guest. ');
                     end;
             'Z': exit;
         end;

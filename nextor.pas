@@ -148,12 +148,8 @@ type
         Slot, Segment, Device, LUN: byte;
         StartSectorMinor, StartSectorMajor: integer;
     end;
-    
-	TSlotSubslot = record
-		Slot, Subslot: byte;
-	end;
 
-	THardwareDevices = array [1..8] of TSlotSubslot;
+	THardwareDevices = array [1..8] of byte;
 
 var
     regs				: TRegs;
@@ -256,6 +252,18 @@ begin
     SizeBytes := 65536 * Major + Minor;
 end;
 
+Function MakeSlotNumber( nPrimarySlot, nSecondarySlot : Byte ) : TSlotNumber;
+Begin
+	MakeSlotNumber := ( nPrimarySlot + 128 ) Or ( nSecondarySlot ShL 2 );
+End;
+
+Procedure SplitSlotNumber( nSlotNumber : TSlotNumber;
+                           Var nPrimarySlot, nSecondarySlot : Byte );
+Begin
+	nPrimarySlot   := nSlotNumber And 3;
+	nSecondarySlot := ( nSlotNumber And 12 ) ShR 2;
+End;
+
 function GetNextorErrorCode (ErrorCode: byte): TShortString;
 var
     temp: TShortString;
@@ -273,58 +281,49 @@ begin
     end;
 end;
 
-function HowManyDevices (var HardwareDevices: THardwareDevices): byte;
-
+function HowManyNextorKernels (var HardwareDevices: THardwareDevices): byte;
 var
-	i, j, Slot, Subslot: byte;
+	i, j, k, l: byte;
 	Data: array[0..7] of byte;
 	
 begin
-	j := 0;
-	Slot := 1;
-	Subslot := 0;
-	
 	FillChar (HardwareDevices, 	SizeOf(HardwareDevices), 	0);
-	
-	for i := nNextorSlotNumber to nNextorSlotNumber + (ctMaxSlots * ctMaxSecSlots) do
-	begin
-	(*	Call a routine in a device driver *)
-		regs.C 	:= ctCDRVR;
-	(*	Driver slot number, from $F348 to $F348 + (4 * 4) *)
-		regs.A 	:= i;
-	(*	Driver segment number - $FF for ROM drivers. *)
-		regs.B 	:= $FF;
-	(*	Routine address - BTW, DEV_INFO ($4163). *)
-		regs.DE := ctDEV_INFO;
-	(*	Address of a 8 byte buffer with the input register values for DEV_INFO. *)
-		regs.HL := Addr(Data);
+	k := 0;
 
-		Data[0] := 0;	(*Register F*)
-		Data[1] := i;	(*Register A: Device index (1 to 7).*)
-		Data[2] := 0;	(*Register C*)
-		Data[3] := 0;	(*Register B: Information to return - basic.*)
-		Data[4] := 0;	(*Register E*)
-		Data[5] := 0;	(*Register D*)
-	(*	We didn't used HL registers because it doesn´t matter to this routine. *)
+	for i := 0 to (ctMaxSlots - 1) do
+		for j := 0 to (ctMaxSecSlots - 1) do
+		begin
+			l := MakeSlotNumber (i, j);
+		(*	Call a routine in a device driver *)
+			regs.C 	:= ctCDRVR;
+		(*	Driver slot number, from $F348 to $F348 + (4 * 4) *)
+			regs.A 	:= l;
+		(*	Driver segment number - $FF for ROM drivers. *)
+			regs.B 	:= $FF;
+		(*	Routine address - BTW, DEV_INFO ($4163). *)
+			regs.DE := ctDEV_INFO;
+		(*	Address of a 8 byte buffer with the input register values for DEV_INFO. *)
+			regs.HL := Addr(Data);
 
-	(*	Here is where the magic begins. *)
-		MSXBDOS ( regs );
-	(*	If there aren't any errors... There is a Nextor kernel here. *)
-		if regs.A = 0 then
-		begin
-			j := j + 1;
-			HardwareDevices[j].Slot 	:= Slot;
-			HardwareDevices[j].Subslot 	:= Subslot;
+			Data[0] := 0;	(*Register F*)
+			Data[1] := i;	(*Register A: Device index (1 to 7).*)
+			Data[2] := 0;	(*Register C*)
+			Data[3] := 0;	(*Register B: Information to return - basic.*)
+			Data[4] := 0;	(*Register E*)
+			Data[5] := 0;	(*Register D*)
+		(*	We didn't used HL registers because it doesn´t matter to this routine. *)
+
+		(*	Here is where the magic begins. *)
+			MSXBDOS ( regs );
+			
+		(*	If there aren't any errors... There is a Nextor kernel here. *)
+			if regs.A = 0 then
+			begin
+				k := k + 1;
+				HardwareDevices[k] := l
+			end;
 		end;
-		
-		Subslot := Subslot + 1;
-		if Subslot > 3 then
-		begin
-			Slot := Slot + 1;
-			Subslot := 0;
-		end;
-	end;
-	HowManyDevices := j;
+		HowManyNextorKernels := k;
 end;
 
 procedure GetRALLOCStatus ( var DriveRalloc: TDriveStatus );
@@ -454,7 +453,7 @@ begin
         (* Make it so.*)
         MSXBDOS ( regs );
 
-        (* Let's find all data. *)
+        (* Let's get all data. *)
         DriverSlot              := Mem[regs.HL];
         DriverSegment           := Mem[regs.HL + 1];
         DriveLettersAtBootTime  := Mem[regs.HL + 2];
