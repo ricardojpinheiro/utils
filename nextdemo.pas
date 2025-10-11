@@ -55,7 +55,7 @@ end;
 
 procedure DOSVEREnhancedExample;
 var 
-	i: byte;
+    i: byte;
 
 begin
     FillChar (regs, SizeOf ( regs ), 0 );
@@ -67,25 +67,25 @@ begin
 
     MSXBDOS ( regs );
 
-	i := hi(regs.IX);
+    i := hi(regs.IX);
     
     if regs.B < 2 then
         writeln (' MSX-DOS 1 detected. ')
     else
-		if regs.IX = 0 then
-		begin
-			writeln (' MSX-DOS 2 detected. ');
-			writeln (' MSXDOS2.SYS ', regs.B, '.', Decimal2Hexa(regs.C));
-		end
-		else
-			if i = 1 then
-			begin
-				writeln (' Nextor detected. ');
-				writeln (' NEXTOR.SYS ', regs.D, '.', Decimal2Hexa(regs.E));
-			end
-			else
-				if (i in [0, 1]) = false then
-					writeln (' It''s not MSX-DOS, neither Nextor. What the heck is that?'); 
+        if regs.IX = 0 then
+        begin
+            writeln (' MSX-DOS 2 detected. ');
+            writeln (' MSXDOS2.SYS ', regs.B, '.', Decimal2Hexa(regs.C));
+        end
+        else
+            if i = 1 then
+            begin
+                writeln (' Nextor detected. ');
+                writeln (' NEXTOR.SYS ', regs.D, '.', Decimal2Hexa(regs.E));
+            end
+            else
+                if (i in [0, 1]) = false then
+                    writeln (' It''s not MSX-DOS, neither Nextor. What the heck is that?'); 
 end;
 
 procedure DSPACEExample;
@@ -173,13 +173,13 @@ end;
 
 procedure GDRVRExample;
 var
-	i, j: byte;
+    i, j: byte;
 
 begin
     FillChar(DeviceDriver, SizeOf ( DeviceDriver ), 0 );
 
-	write (' Which device do you want to get info? (1-7): ');
-	readln(i);
+    write (' Which device do you want to get info? (1-7): ');
+    readln(i);
 
     with DeviceDriver do
     begin
@@ -198,8 +198,9 @@ begin
         writeln (' Driver Index: ', DriverIndex);
         writeln (' Driver Slot: ', DriverSlot);
         writeln (' Driver Segment: ', DriverSegment);
-        writeln (' How many assigned drive letters: ', DriveLettersAtBootTime);
-        writeln (' First drive letter: ', FirstDriveLetter);
+        writeln (' How many assigned drive letters at boot time: ', DriveLettersAtBootTime);
+        writeln (' First drive letter at boot time: ', FirstDriveLetter);
+		writeln ( '-=> If there is not any assigned drive letters at boot time, please disregard.');
         if NextorOrMSXDOSDriver = 0 then
             writeln (' It''s a MSX-DOS driver.')
         else
@@ -254,8 +255,8 @@ var
     
 begin
 
-	write (' Which device do you want to get info? (1-7): ');
-	readln(i);
+    write (' Which device do you want to get info? (1-7): ');
+    readln(i);
 
     with DevicePartition do
     begin
@@ -289,24 +290,24 @@ begin
     
     with PartitionResult do
     begin
-		writeln('Error code: ', ErrorCode);
-		writeln('Status byte of the partition: ', Status);
+        writeln('Error code: ', ErrorCode);
+        writeln('Status byte of the partition: ', Status);
 
         writeln (' Partition type: ', PartitionType,': ', SPartitionType);
     
-		writeln (' PartitionSizeMajor: ', PartitionSizeMajor); 
-		writeln (' PartitionSizeMinor: ', PartitionSizeMinor);
-		
+        writeln (' PartitionSizeMajor: ', PartitionSizeMajor); 
+        writeln (' PartitionSizeMinor: ', PartitionSizeMinor);
+        
         Aux1 := PartitionSizeMajor;
         Aux2 := PartitionSizeMinor;
         
-		FixBytes (Aux1, Aux2);
+        FixBytes (Aux1, Aux2);
       
         writeln (' Partition size (Sectors): ', SizeBytes (Aux1, Aux2):0:0, ' sectors.');
-        writeln (' Partition size (Mb): 	 ', round(int(SizeBytes (Aux1, Aux2) / 1048576)), ' Mb. ');
+        writeln (' Partition size (Mb):      ', round(int(SizeBytes (Aux1, Aux2) / 1048576)), ' Mb. ');
 
-		writeln (' StartSectorMajor: ', StartSectorMajor); 
-		writeln (' StartSectorMinor: ', StartSectorMinor);
+        writeln (' StartSectorMajor: ', StartSectorMajor); 
+        writeln (' StartSectorMinor: ', StartSectorMinor);
 
         Aux1 := StartSectorMajor;
         Aux2 := StartSectorMinor;
@@ -318,173 +319,173 @@ end;
 
 procedure CDRVRExample;
 var
-	i, j, k: integer;
-	a, b: byte;
-	c: char;
-	RealData: real;
-	LUNData: array [0..11] of byte;
-	RoutineDeviceDriver: TRoutineDeviceDriver;
+    i, j, k: integer;
+    a, b: byte;
+    c: char;
+    RealData: real;
+    LUNData: array [0..11] of byte;
+    RoutineDeviceDriver: TRoutineDeviceDriver;
 
 begin
-(*	DEV_INFO. *)
+(*  DEV_INFO. *)
 
-	writeln('DEV_INFO:');
-	write (' Which device do you want to get info? (1-7): ');
-	readln(b);
+    writeln('DEV_INFO:');
+    write (' Which device do you want to get info? (1-7): ');
+    readln(b);
 
-	for j := 0 to 3 do
-	begin
-		FillChar(RoutineDeviceDriver, 	SizeOf (RoutineDeviceDriver), 	chr(32));
+    for j := 0 to 3 do
+    begin
+        FillChar(RoutineDeviceDriver,   SizeOf (RoutineDeviceDriver),   chr(32));
 
-		with RoutineDeviceDriver do
-		begin
-			RoutineAddress := ctDEV_INFO;
-			DriverSlot := nNextorSlotNumber;
-			DriverSegment := $FF;
-			
-			Data[0] := 0;	(*F*)
-			Data[1] := b;	(*A*)
-			Data[2] := 0;	(*C*)
-			Data[3] := j;	(*B*)
-			Data[4] := 0;	(*E*)
-			Data[5] := 0;	(*D*)
-			Data[6] := lo(Addr(Information));	(*L*)
-			Data[7] := hi(Addr(Information));	(*H*)
-		end;
-		
-		CallRoutineInDeviceDriver (RoutineDeviceDriver);
+        with RoutineDeviceDriver do
+        begin
+            RoutineAddress := ctDEV_INFO;
+            DriverSlot := nNextorSlotNumber;
+            DriverSegment := $FF;
+            
+            Data[0] := 0;   (*F*)
+            Data[1] := b;   (*A*)
+            Data[2] := 0;   (*C*)
+            Data[3] := j;   (*B*)
+            Data[4] := 0;   (*E*)
+            Data[5] := 0;   (*D*)
+            Data[6] := lo(Addr(Information));   (*L*)
+            Data[7] := hi(Addr(Information));   (*H*)
+        end;
+        
+        CallRoutineInDeviceDriver (RoutineDeviceDriver);
 
-		with RoutineDeviceDriver do
-		begin
-			if j = 0 then
-			begin
-				writeln('Nextor kernel slot: ', nNextorSlotNumber);
-				writeln('Device ', b);
-				writeln('Number of logical units: ',	Information[0]);
-				writeln('Device features flags: ', 		Information[1]);
-				writeln('Information type: ', Data[3], ' regs.A: ', ErrorCode);
-			end;
-			case j of
-				0: write('Basic information: ');
-				1: write('Manufacturer name string: ');
-				2: write('Device name string: ');
-				3: write('Serial number string: ');
-			end;
-			for i := 0 to 63 do 
-				write(chr(Information[i]));
-			writeln;
-		end;
-	end;
-	
-(*	LUN_INFO. *)
+        with RoutineDeviceDriver do
+        begin
+            if j = 0 then
+            begin
+                writeln('Nextor kernel slot: ', nNextorSlotNumber);
+                writeln('Device ', b);
+                writeln('Number of logical units: ',    Information[0]);
+                writeln('Device features flags: ',      Information[1]);
+                writeln('Information type: ', Data[3], ' regs.A: ', ErrorCode);
+            end;
+            case j of
+                0: write('Basic information: ');
+                1: write('Manufacturer name string: ');
+                2: write('Device name string: ');
+                3: write('Serial number string: ');
+            end;
+            for i := 0 to 63 do 
+                write(chr(Information[i]));
+            writeln;
+        end;
+    end;
+    
+(*  LUN_INFO. *)
 
-	writeln('LUN_INFO:');
+    writeln('LUN_INFO:');
 
-	FillChar(RoutineDeviceDriver, 	SizeOf (RoutineDeviceDriver), 	chr(32));
+    FillChar(RoutineDeviceDriver,   SizeOf (RoutineDeviceDriver),   chr(32));
 
-	writeln (' Which device do you want to get information? (1 to 7)');
-	c := readkey;
-	val (c, i, k);
+    writeln (' Which device do you want to get information? (1 to 7)');
+    c := readkey;
+    val (c, i, k);
 
-	writeln (' Which LUN do you want to get information?');
-	c := readkey;
-	val (c, j, k);
+    writeln (' Which LUN do you want to get information?');
+    c := readkey;
+    val (c, j, k);
 
-	with RoutineDeviceDriver do
-	begin
-		RoutineAddress := ctLUN_INFO;
-		DriverSlot := nNextorSlotNumber;
-		DriverSegment := $FF;
+    with RoutineDeviceDriver do
+    begin
+        RoutineAddress := ctLUN_INFO;
+        DriverSlot := nNextorSlotNumber;
+        DriverSegment := $FF;
 
-		Data[0] := 0;	(*F*)
-		Data[1] := i;	(*A*)
-		Data[2] := 0;	(*C*)
-		Data[3] := j;	(*B*)
-		Data[4] := 0;	(*E*)
-		Data[5] := 0;	(*D*)
-		Data[6] := lo(Addr(Information));	(*L*)
-		Data[7] := hi(Addr(Information));	(*H*)
-	end;
+        Data[0] := 0;   (*F*)
+        Data[1] := i;   (*A*)
+        Data[2] := 0;   (*C*)
+        Data[3] := j;   (*B*)
+        Data[4] := 0;   (*E*)
+        Data[5] := 0;   (*D*)
+        Data[6] := lo(Addr(Information));   (*L*)
+        Data[7] := hi(Addr(Information));   (*H*)
+    end;
 
-	CallRoutineInDeviceDriver (RoutineDeviceDriver);
+    CallRoutineInDeviceDriver (RoutineDeviceDriver);
 
-	writeln('Device ', i);
-	
-	with RoutineDeviceDriver do
-	begin
-		if ErrorCode = 0 then
-		begin
-			write('Medium type: ');
-			case Information[0] of
-				0: 		write('Block device.');
-				1: 		write('CD or DVD reader or recorder.');
-				else 	write('Unused (reserved for future use).');
-			end;
-			writeln;
+    writeln('Device ', i);
+    
+    with RoutineDeviceDriver do
+    begin
+        if ErrorCode = 0 then
+        begin
+            write('Medium type: ');
+            case Information[0] of
+                0:      write('Block device.');
+                1:      write('CD or DVD reader or recorder.');
+                else    write('Unused (reserved for future use).');
+            end;
+            writeln;
 
-			RealData := 256 * Information[2] + Information[1];
-			writeln('Sector size: ', RealData:3:0);
+            RealData := 256 * Information[2] + Information[1];
+            writeln('Sector size: ', RealData:3:0);
 
-			k := Information[6];
-			RealData :=	16777216 * k;
+            k := Information[6];
+            RealData := 16777216 * k;
 
-			k := Information[5];
-			RealData := RealData + 65536 * k;
+            k := Information[5];
+            RealData := RealData + 65536 * k;
 
-			k := Information[4];
-			RealData := RealData + 256 * k;
+            k := Information[4];
+            RealData := RealData + 256 * k;
 
-			k := Information[3];
-			RealData := RealData + k;
+            k := Information[3];
+            RealData := RealData + k;
 
-			writeln('Total number of available sectors: ', RealData:6:0);
-			writeln('LUN feature flags: ', Information[7]);
-			RealData := 256 * Information[9] + Information[8];
-			writeln('Number of cylinders: ', RealData:3:0);
-			writeln('Number of heads: ', Information[10]);
-			writeln('Number of sectors per track: ', Information[11]);
-		end
-		else
-			writeln('Error, device or LUN not available.');
-	end;
+            writeln('Total number of available sectors: ', RealData:6:0);
+            writeln('LUN feature flags: ', Information[7]);
+            RealData := 256 * Information[9] + Information[8];
+            writeln('Number of cylinders: ', RealData:3:0);
+            writeln('Number of heads: ', Information[10]);
+            writeln('Number of sectors per track: ', Information[11]);
+        end
+        else
+            writeln('Error, device or LUN not available.');
+    end;
 {
-	writeln('DEV_STATUS: ');
+    writeln('DEV_STATUS: ');
 
-	FillChar(RoutineDeviceDriver, 	SizeOf (RoutineDeviceDriver), 	chr(32));
-	
-	with RoutineDeviceDriver do
-	begin
-		RoutineAddress := ctDEV_STATUS;
-		DriverSlot := nNextorSlotNumber;
-		DriverSegment := $FF;		
+    FillChar(RoutineDeviceDriver,   SizeOf (RoutineDeviceDriver),   chr(32));
+    
+    with RoutineDeviceDriver do
+    begin
+        RoutineAddress := ctDEV_STATUS;
+        DriverSlot := nNextorSlotNumber;
+        DriverSegment := $FF;       
 
-		for i := 1 to 7 do
-		begin
-			Data[0] := 0;	(*F*)
-			Data[1] := i;	(*A*)
-			Data[2] := 0;	(*C*)
-			Data[3] := 1;	(*B*)
-			Data[4] := 0;	(*E*)
-			Data[5] := 0;	(*D*)
-			Data[6] := 0;	(*L*)
-			Data[7] := 0;	(*H*)
+        for i := 1 to 7 do
+        begin
+            Data[0] := 0;   (*F*)
+            Data[1] := i;   (*A*)
+            Data[2] := 0;   (*C*)
+            Data[3] := 1;   (*B*)
+            Data[4] := 0;   (*E*)
+            Data[5] := 0;   (*D*)
+            Data[6] := 0;   (*L*)
+            Data[7] := 0;   (*H*)
 
-			Data[6] := lo(Addr(LUNData));	(*L*)
-			Data[7] := hi(Addr(LUNData));	(*H*)
+            Data[6] := lo(Addr(LUNData));   (*L*)
+            Data[7] := hi(Addr(LUNData));   (*H*)
 
-			CallRoutineInDeviceDriver (RoutineDeviceDriver);
-			
-			writeln (' Device ', Data[1], ' LUN ', Data[3]);
-			case ErrorCode of
-				0: 	 writeln (ErrorCode, ' Device/logical unit not available, or the device or LUN supplied is invalid.');
-				1: 	 writeln (ErrorCode, ' Device/logical unit is available, not changed since the last status request.');
-				2: 	 writeln (ErrorCode, ' Device/logical unit is available, changed since the last status request.');
-				3: 	 writeln (ErrorCode, ' Device/logical unit is available, not possible to determine if changed or not.');
-				else writeln (ErrorCode, ' Who cares.');
-			end;
-		end;
-	end;
-}	
+            CallRoutineInDeviceDriver (RoutineDeviceDriver);
+            
+            writeln (' Device ', Data[1], ' LUN ', Data[3]);
+            case ErrorCode of
+                0:   writeln (ErrorCode, ' Device/logical unit not available, or the device or LUN supplied is invalid.');
+                1:   writeln (ErrorCode, ' Device/logical unit is available, not changed since the last status request.');
+                2:   writeln (ErrorCode, ' Device/logical unit is available, changed since the last status request.');
+                3:   writeln (ErrorCode, ' Device/logical unit is available, not possible to determine if changed or not.');
+                else writeln (ErrorCode, ' Who cares.');
+            end;
+        end;
+    end;
+}   
 end;
 
 procedure MAPDRVExample;
@@ -554,48 +555,48 @@ end;
 
 procedure NextorKernelsExample (PrintOrNot: boolean);
 var
-	i, j, Slot, Subslot: byte;
+    i, j, Slot, Subslot: byte;
 
 begin
-	j := HowManyNextorKernels (HardwareDevices);
+    j := HowManyNextorKernels (HardwareDevices);
 
-	if PrintOrNot then
-	begin
-		writeln ('We have ', j, ' Nextor kernel(s).');
-		for i := 1 to j do
-		begin
-			SplitSlotNumber (HardwareDevices[i], Slot, Subslot);
-			writeln ('Nextor kernels found in slot ', Slot, ' subslot ', Subslot);
-		end;
-	end;
+    if PrintOrNot then
+    begin
+        writeln ('We have ', j, ' Nextor kernel(s).');
+        for i := 1 to j do
+        begin
+            SplitSlotNumber (HardwareDevices[i], Slot, Subslot);
+            writeln (HardwareDevices[i], ' Nextor kernels found in slot ', Slot, ' subslot ', Subslot);
+        end;
+    end;
 end;
 
 procedure GETCLUSExample;
 var
-	Character: char;
-	i: byte;
-	Aux1: real;
-	
+    Character: char;
+    i: byte;
+    Aux1: real;
+    
 begin
-	Aux1 := 0;
+    Aux1 := 0;
     writeln (' Which drive do you want to get info? ');
     Character := upcase(readkey);
     i := GetClusterSize (Character);
-		
-	Aux1 := i * 512;
-	
-	If Aux1 < 0 then
-		Aux1 := 32768 + Abs(Aux1);
+        
+    Aux1 := i * 512;
+    
+    If Aux1 < 0 then
+        Aux1 := 32768 + Abs(Aux1);
 
     writeln (' Cluster size for drive ', Character, ' is ', i, ' sectors, or ', Aux1:0:0, ' bytes. ');
 end;
 
 var
-	Hexa: TBinNumber;
-	i: byte;
+    Hexa: TBinNumber;
+    i: byte;
 
 BEGIN
-	NextorKernelsExample (false);
+    NextorKernelsExample (false);
     Character := ' ';
     while (Character <> 'F') do
     begin

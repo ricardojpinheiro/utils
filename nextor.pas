@@ -27,7 +27,7 @@
 
 const
 
-(*	Nextor new function calls. *)
+(*  Nextor new function calls. *)
 
     ctFOUT      = $71; (* FOUT routine. Barely implemented.     *)
     ctZSTROUT   = $72; (* ZSTROUT routine. Barely implemented.  *)
@@ -39,12 +39,12 @@ const
     ctGDRVR     = $78; (* GDRVR routine.                        *)
     ctGDLI      = $79; (* GDLI routine.                         *)
     ctGPART     = $7A; (* GPART routine.                        *)
-    ctCDRVR     = $7B; (* CDRVR routine.				        *)
+    ctCDRVR     = $7B; (* CDRVR routine.                        *)
     ctMAPDRV    = $7C; (* MAPDRV routine.                       *)
     ctZ80MODE   = $7D; (* Z80MODE routine.                      *)
-    ctGETCLUS   = $7E; (* GETCLUS routine.					    *)
+    ctGETCLUS   = $7E; (* GETCLUS routine.                      *)
 
-(*	Constants which can be used to change states. *)
+(*  Constants which can be used to change states. *)
 
     ctGetFastStroutMode         =   $00;
     ctSetFastStroutMode         =   $01;
@@ -70,25 +70,25 @@ const
     ctDisableZ80AccessMode      =   $00;
     ctEnableZ80AccessMode       =   $FF;
 
-(*	Error codes. *)
+(*  Error codes. *)
 
     ctICLUS         = $B0; (* Invalid cluster number or sequence.   (176) *)
-    ctBFSZ          = $B1; (* Bad file size.                  		(177) *)
-    ctFMNT          = $B2; (* File is mounted.                		(178) *)
-    ctPUSED         = $B3; (* Partition is already in use.   	 	(179) *)
-    ctIPART         = $B4; (* Invalid partition number.       		(180) *)
-    ctIDEVL         = $B5; (* Invalid device or LUN.          		(181) *)
-    ctIDRVR         = $B6; (* Invalid device driver.          		(182) *)
+    ctBFSZ          = $B1; (* Bad file size.                        (177) *)
+    ctFMNT          = $B2; (* File is mounted.                      (178) *)
+    ctPUSED         = $B3; (* Partition is already in use.          (179) *)
+    ctIPART         = $B4; (* Invalid partition number.             (180) *)
+    ctIDEVL         = $B5; (* Invalid device or LUN.                (181) *)
+    ctIDRVR         = $B6; (* Invalid device driver.                (182) *)
 
-(*	Routines for device-based drivers. *)
-	ctDRV_VERSION	= 	$4133; (* Returns the driver version.*)
-	ctDEV_RW		= 	$4160; (* Reads or writes absolute sectors from/to a device. *)
-	ctDEV_INFO		=	$4163; (* Returns info about a device. *)
-	ctDEV_STATUS	=	$4166; (* Get the availability and change status for a device or logical unit.*)
-	ctLUN_INFO		=	$4169; (* Get info about a logical unit.*)
+(*  Routines for device-based drivers. *)
+    ctDRV_VERSION   =   $4133; (* Returns the driver version.*)
+    ctDEV_RW        =   $4160; (* Reads or writes absolute sectors from/to a device. *)
+    ctDEV_INFO      =   $4163; (* Returns info about a device. *)
+    ctDEV_STATUS    =   $4166; (* Get the availability and change status for a device or logical unit.*)
+    ctLUN_INFO      =   $4169; (* Get info about a logical unit.*)
     
-(*	Max number of devices. *)    
-	maxdevices      = 16;
+(*  Max number of devices. *)    
+    maxdevices      = 16;
     
 type
     TBinNumber  = array [0..7] of byte;
@@ -126,13 +126,13 @@ type
     end;
     
     TRoutineDeviceDriver = record
-		DriverIndex, DriverSlot, DriverSegment: byte;
-		RoutineAddress: integer;
-		Data: array[0..7] of byte;
-		Information: array[0..63] of byte;
-		ResultBC, ResultDE, ResultHL,ResultIX: integer;
-		ErrorCode: byte;
-	end;
+        DriverIndex, DriverSlot, DriverSegment: byte;
+        RoutineAddress: integer;
+        Data: array[0..7] of byte;
+        Information: array[0..63] of byte;
+        ResultBC, ResultDE, ResultHL,ResultIX: integer;
+        ErrorCode: byte;
+    end;
     
     TMapDrive = record
         PhysicalDrive: char;
@@ -149,11 +149,11 @@ type
         StartSectorMinor, StartSectorMajor: integer;
     end;
 
-	THardwareDevices = array [1..8] of byte;
+    THardwareDevices = array [1..8] of byte;
 
 var
-    regs				: TRegs;
-    nNextorSlotNumber 	: byte absolute $f348;
+    regs                : TRegs;
+    nNextorSlotNumber   : byte absolute $f348;
 
 function Power (x, y: integer): integer;
 var
@@ -214,37 +214,37 @@ end;
 
 function Decimal2Hexa (w: integer): TPunyString;
 var
-	hexStr: TTinyString;
+    hexStr: TTinyString;
 
   function Translate (b: byte): char;
   begin
     if b < 10 then
-		translate := chr(b + 48)
+        translate := chr(b + 48)
     else
-		translate := chr(b + 55);
+        translate := chr(b + 55);
   end;
 
 begin   { Decimal2Hexa }
-	FillChar (hexstr, SizeOf (hexstr), chr(32));
+    FillChar (hexstr, SizeOf (hexstr), chr(32));
 
-	hexstr		:=	hexstr	+	translate(hi(w) shr 4);
-	hexstr		:=	hexstr	+	translate(hi(w) and 15);
-	hexstr		:=	hexstr	+	translate(lo(w) shr 4);
-	hexstr		:=	hexstr	+	translate(lo(w) and 15);
+    hexstr      :=  hexstr  +   translate(hi(w) shr 4);
+    hexstr      :=  hexstr  +   translate(hi(w) and 15);
+    hexstr      :=  hexstr  +   translate(lo(w) shr 4);
+    hexstr      :=  hexstr  +   translate(lo(w) and 15);
 
-	Delete (hexstr, 1, DifferentPos(chr(32), hexstr) - 1);
-	Delete (hexstr, 1, DifferentPos(chr(48), hexstr) - 1);
+    Delete (hexstr, 1, DifferentPos(chr(32), hexstr) - 1);
+    Delete (hexstr, 1, DifferentPos(chr(48), hexstr) - 1);
 
-	Decimal2Hexa	:=	hexstr;
+    Decimal2Hexa    :=  hexstr;
 end; 
 
 procedure FixBytes (var Aux1: real; var Aux2: real);
 begin
-	if Aux1 < 0 then
-		Aux1 := 32768 + Abs(Aux1);
+    if Aux1 < 0 then
+        Aux1 := 32768 + Abs(Aux1);
 
-	if Aux2 < 0 then
-		Aux2 := 32768 + Abs(Aux2);
+    if Aux2 < 0 then
+        Aux2 := 32768 + Abs(Aux2);
 end;
 
 function SizeBytes (Major, Minor: real): real;
@@ -254,14 +254,14 @@ end;
 
 Function MakeSlotNumber( nPrimarySlot, nSecondarySlot : Byte ) : TSlotNumber;
 Begin
-	MakeSlotNumber := ( nPrimarySlot + 128 ) Or ( nSecondarySlot ShL 2 );
+    MakeSlotNumber := ( nPrimarySlot + 128 ) Or ( nSecondarySlot * 4 );
 End;
 
 Procedure SplitSlotNumber( nSlotNumber : TSlotNumber;
                            Var nPrimarySlot, nSecondarySlot : Byte );
 Begin
-	nPrimarySlot   := nSlotNumber And 3;
-	nSecondarySlot := ( nSlotNumber And 12 ) ShR 2;
+    nPrimarySlot   := nSlotNumber And 3;
+    nSecondarySlot := ( nSlotNumber And 12 ) div 4;
 End;
 
 function GetNextorErrorCode (ErrorCode: byte): TShortString;
@@ -283,47 +283,47 @@ end;
 
 function HowManyNextorKernels (var HardwareDevices: THardwareDevices): byte;
 var
-	i, j, k, l: byte;
-	Data: array[0..7] of byte;
-	
+    i, j, k, l: byte;
+    Data: array[0..7] of byte;
+    
 begin
-	FillChar (HardwareDevices, 	SizeOf(HardwareDevices), 	0);
-	k := 0;
+    FillChar (HardwareDevices,  SizeOf(HardwareDevices),    0);
+    k := 0;
 
-	for i := 0 to (ctMaxSlots - 1) do
-		for j := 0 to (ctMaxSecSlots - 1) do
-		begin
-			l := MakeSlotNumber (i, j);
-		(*	Call a routine in a device driver *)
-			regs.C 	:= ctCDRVR;
-		(*	Driver slot number, from $F348 to $F348 + (4 * 4) *)
-			regs.A 	:= l;
-		(*	Driver segment number - $FF for ROM drivers. *)
-			regs.B 	:= $FF;
-		(*	Routine address - BTW, DEV_INFO ($4163). *)
-			regs.DE := ctDEV_INFO;
-		(*	Address of a 8 byte buffer with the input register values for DEV_INFO. *)
-			regs.HL := Addr(Data);
+    for i := 0 to (ctMaxSlots - 1) do
+        for j := 0 to (ctMaxSecSlots - 1) do
+        begin
+            l := MakeSlotNumber (i, j);
+        (*  Call a routine in a device driver *)
+            regs.C  := ctCDRVR;
+        (*  Driver slot number, from $F348 to $F348 + (4 * 4) *)
+            regs.A  := l;
+        (*  Driver segment number - $FF for ROM drivers. *)
+            regs.B  := $FF;
+        (*  Routine address - BTW, DEV_INFO ($4163). *)
+            regs.DE := ctDEV_INFO;
+        (*  Address of a 8 byte buffer with the input register values for DEV_INFO. *)
+            regs.HL := Addr(Data);
 
-			Data[0] := 0;	(*Register F*)
-			Data[1] := i;	(*Register A: Device index (1 to 7).*)
-			Data[2] := 0;	(*Register C*)
-			Data[3] := 0;	(*Register B: Information to return - basic.*)
-			Data[4] := 0;	(*Register E*)
-			Data[5] := 0;	(*Register D*)
-		(*	We didn't used HL registers because it doesn´t matter to this routine. *)
+            Data[0] := 0;   (*Register F*)
+            Data[1] := i;   (*Register A: Device index (1 to 7).*)
+            Data[2] := 0;   (*Register C*)
+            Data[3] := 0;   (*Register B: Information to return - basic.*)
+            Data[4] := 0;   (*Register E*)
+            Data[5] := 0;   (*Register D*)
+        (*  We didn't used HL registers because it doesn´t matter to this routine. *)
 
-		(*	Here is where the magic begins. *)
-			MSXBDOS ( regs );
-			
-		(*	If there aren't any errors... There is a Nextor kernel here. *)
-			if regs.A = 0 then
-			begin
-				k := k + 1;
-				HardwareDevices[k] := l
-			end;
-		end;
-		HowManyNextorKernels := k;
+        (*  Here is where the magic begins. *)
+            MSXBDOS ( regs );
+            
+        (*  If there aren't any errors... There is a Nextor kernel here. *)
+            if regs.A = 0 then
+            begin
+                k := k + 1;
+                HardwareDevices[k] := l
+            end;
+        end;
+        HowManyNextorKernels := k;
 end;
 
 procedure GetRALLOCStatus ( var DriveRalloc: TDriveStatus );
@@ -369,14 +369,14 @@ begin
 {
 writeln(' Major: ', Regs.DE, ' Minor: ', Regs.HL);
 }
-	if Regs.DE < 0 then
-		temp1 := 65536 + Regs.DE
-	else
-		temp1 := Regs.DE;
+    if Regs.DE < 0 then
+        temp1 := 65536 + Regs.DE
+    else
+        temp1 := Regs.DE;
 
-	temp2 := Regs.HL;
-	
-	GetDriveSpaceInfo := 65536 * temp2 + temp1;
+    temp2 := Regs.HL;
+    
+    GetDriveSpaceInfo := 65536 * temp2 + temp1;
 end;
 
 function GetLockStatus ( DriveLetter: char): byte;
@@ -454,8 +454,15 @@ begin
         MSXBDOS ( regs );
 
         (* Let's get all data. *)
-        DriverSlot              := Mem[regs.HL];
-        DriverSegment           := Mem[regs.HL + 1];
+        i              			:= Mem[regs.HL];
+        if i > 128 then
+			SplitSlotNumber (i, DriverSlot, DriverSegment)
+		else
+		begin
+			DriverSlot			:= i;
+			DriverSegment       := Mem[regs.HL + 1];
+		end;
+		
         DriveLettersAtBootTime  := Mem[regs.HL + 2];
         FirstDriveLetter        := chr(Mem[regs.HL + 3] + 65);
         NextorOrMSXDOSDriver    := Mem[regs.HL + 4] div 128;
@@ -507,9 +514,9 @@ begin
                                       65536 * Mem[regs.HL + 8] +
                                         256 * Mem[regs.HL + 7] +
                                               Mem[regs.HL + 6];
-		
-		StartSectorMajor := 256 * Mem[regs.HL + 9] + Mem[regs.HL + 8];
-		StartSectorMinor := 256 * Mem[regs.HL + 7] + Mem[regs.HL + 6];
+        
+        StartSectorMajor := 256 * Mem[regs.HL + 9] + Mem[regs.HL + 8];
+        StartSectorMinor := 256 * Mem[regs.HL + 7] + Mem[regs.HL + 6];
     end;
 end;
 
@@ -586,44 +593,44 @@ end;
 
 procedure CallRoutineInDeviceDriver (var RoutineDeviceDriver: TRoutineDeviceDriver);
 begin
-	FillChar( regs, SizeOf( regs ), 0 );
-	
-	with RoutineDeviceDriver do
-	begin
-		(* Driver slot number. *)
-		regs.A := DriverSlot;
+    FillChar( regs, SizeOf( regs ), 0 );
+    
+    with RoutineDeviceDriver do
+    begin
+        (* Driver slot number. *)
+        regs.A := DriverSlot;
 
-		(* Driver segment number. *)
-		regs.B := DriverSegment;
-		
-		(* Routine address. *)
-		regs.DE := RoutineAddress;
-		
-		(*	Address of a 8 byte buffer with the input register values for the 
-			routine. *)
-		regs.HL := Addr(Data);
-		
-		(*	ctCDRVR.	*)
-		regs.C := ctCDRVR;
-		
-		(* It's showtime. *)
-		MSXBDOS ( regs );
+        (* Driver segment number. *)
+        regs.B := DriverSegment;
+        
+        (* Routine address. *)
+        regs.DE := RoutineAddress;
+        
+        (*  Address of a 8 byte buffer with the input register values for the 
+            routine. *)
+        regs.HL := Addr(Data);
+        
+        (*  ctCDRVR.    *)
+        regs.C := ctCDRVR;
+        
+        (* It's showtime. *)
+        MSXBDOS ( regs );
 
-		(*	Returns BC register. *)
-		ResultBC := regs.BC;
-		
-		(*	Returns DE register. *)
-		ResultDE := regs.DE;
-		
-		(*	Returns HL register. *)
-		ResultHL := regs.HL;
-		
-		(*	Returns IX register. *)
-		ResultIX := regs.IX;
+        (*  Returns BC register. *)
+        ResultBC := regs.BC;
+        
+        (*  Returns DE register. *)
+        ResultDE := regs.DE;
+        
+        (*  Returns HL register. *)
+        ResultHL := regs.HL;
+        
+        (*  Returns IX register. *)
+        ResultIX := regs.IX;
 
-		(*	Returns error code. *)
-		ErrorCode := regs.A;
-	end;
+        (*  Returns error code. *)
+        ErrorCode := regs.A;
+    end;
 end;
 
 procedure SetMAPDRV (   MapDrive: TMapDrive; 
@@ -715,22 +722,22 @@ end;
 
 function GetClusterSize (DriveLetter: char): byte;
 var
-	Data: string[16];
+    Data: string[16];
 begin
-	(* ctGETCLUS. *)
-	regs.C := ctGETCLUS;
+    (* ctGETCLUS. *)
+    regs.C := ctGETCLUS;
 
-	(* Drive number (0=default, 1=A: etc.)*)
-	regs.A := (ord(upcase(DriveLetter)) - 65);
+    (* Drive number (0=default, 1=A: etc.)*)
+    regs.A := (ord(upcase(DriveLetter)) - 65);
 
-	(* Cluster number - we get info from cluster 0. *)
-	regs.DE := 1;
+    (* Cluster number - we get info from cluster 0. *)
+    regs.DE := 1;
 
-	(* Pointer to a 16 byte buffer. *)
-	regs.HL := Addr(Data);
+    (* Pointer to a 16 byte buffer. *)
+    regs.HL := Addr(Data);
 
-	MSXBDOS ( regs );
+    MSXBDOS ( regs );
 
-	(* Function returns cluster size. *)
-	GetClusterSize := Mem[Regs.HL + 10];
+    (* Function returns cluster size. *)
+    GetClusterSize := Mem[Regs.HL + 10];
 end;

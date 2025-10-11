@@ -1,0 +1,11 @@
+NAME       ST:SB:L  SIZE    TYPE     LTR
+DEVICE1    1  0  1   200 Mb disk
+|_part1    1  0  1    40 Mb primary  A:
+|_part2    1  0  1  xxxx Mb extended 
+  |_part3  1  0  1    40 Mb logical  C:
+  |_part4  1  0  1    32 Mb logical  D:
+  |_part5  1  0  1  xxxx Mb logical  
+  |_part6  1  0  1  xxxx Mb logical  
+DRIVE      2  0      720 Kb disk     
+DRIVE      3  2      720 Kb disk     E:
+RAMDISK    0  0       60 Kb ramdisk  H:

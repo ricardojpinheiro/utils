@@ -30,8 +30,8 @@ program Varredura;
 {$i d:nextor.pas}
 
 type
-	Upper = set of 'A'..'Z';
-	Lower = set of 'a'..'z';
+    Upper = set of 'A'..'Z';
+    Lower = set of 'a'..'z';
 
 var
     MSXDOSVersao: TMSXDOSVersion;
@@ -50,10 +50,10 @@ var
     
     TempString: TTinyString;
 
-	LowerAlphabet: Lower;
-	UpperAlphabet: Upper; 
-	LINL40: byte absolute $F3AE;
-	Data: array[0..7] of byte;
+    LowerAlphabet: Lower;
+    UpperAlphabet: Upper; 
+    LINL40: byte absolute $F3AE;
+    Data: array[0..7] of byte;
 
 function Readkey : char;
 var
@@ -70,38 +70,35 @@ end;
 
 BEGIN
     Character := ' ';
-	clrscr;
+    clrscr;
+    
+    for i := 0 to ctMaxSlots - 1 do
+        for j := 0 to CtMaxSecSlots - 1 do
+        begin
+        (*  Call a routine in a device driver *)
+            regs.C  := ctCDRVR;
+        (*  Driver slot number, from $F348 to $F348 + (4 * 4) *)
+            regs.A  := MakeSlotNumber (i, j); 
+        (*  Driver segment number - $FF for ROM drivers. *)
+            regs.B  := $FF;
+        (*  Routine address - BTW, DEV_INFO ($4163). *)
+            regs.DE := ctDEV_INFO;
+        (*  Address of a 8 byte buffer with the input register values for DEV_INFO. *)
+            regs.HL := Addr(Data);
 
-	writeln(LINL40);
-	
-	for i := 0 to ctMaxSlots - 1 do
-		for j := 0 to CtMaxSecSlots - 1 do
-		begin
-		(*	Call a routine in a device driver *)
-			regs.C 	:= ctCDRVR;
-		(*	Driver slot number, from $F348 to $F348 + (4 * 4) *)
-			regs.A 	:= MakeSlotNumber (i, j);
-		(*	Driver segment number - $FF for ROM drivers. *)
-			regs.B 	:= $FF;
-		(*	Routine address - BTW, DEV_INFO ($4163). *)
-			regs.DE := ctDEV_INFO;
-		(*	Address of a 8 byte buffer with the input register values for DEV_INFO. *)
-			regs.HL := Addr(Data);
+            Data[0] := 0;   (*Register F*)
+            Data[1] := i;   (*Register A: Device index (1 to 7).*)
+            Data[2] := 0;   (*Register C*)
+            Data[3] := 0;   (*Register B: Information to return - basic.*)
+            Data[4] := 0;   (*Register E*)
+            Data[5] := 0;   (*Register D*)
+        (*  We didn't used HL registers because it doesn´t matter to this routine. *)
 
-			Data[0] := 0;	(*Register F*)
-			Data[1] := i;	(*Register A: Device index (1 to 7).*)
-			Data[2] := 0;	(*Register C*)
-			Data[3] := 0;	(*Register B: Information to return - basic.*)
-			Data[4] := 0;	(*Register E*)
-			Data[5] := 0;	(*Register D*)
-		(*	We didn't used HL registers because it doesn´t matter to this routine. *)
-
-		(*	Here is where the magic begins. *)
-			MSXBDOS ( regs );
-			
-		(*	If there aren't any errors... There is a Nextor kernel here. *)
-
-			writeln ('Slot: ', i, ' Subslot: ', j, ' Slot: ', MakeSlotNumber (i, j), ' Error Code: ', regs.A); 
-
-		end;
+        (*  Here is where the magic begins. *)
+            MSXBDOS ( regs );
+            
+        (*  If there aren't any errors... There is a Nextor kernel here. *)
+			if regs.A = 0 then
+				writeln ('Slot: ', i, ' Subslot: ', j, ' Slot: ', MakeSlotNumber (i, j), ' Error Code: ', regs.A); 
+        end;
 END.

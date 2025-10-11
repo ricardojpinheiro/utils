@@ -1,0 +1,11 @@
+NAME       NEXTOR  SLOT:SUB:LUN  REMOVABLE SIZE    READONLY  TYPE     LETTER
+DEVICE1      1       1   0   1      NO      200 Mb    NO     disk
+|_part1      1       1   0   1      NO       40 Mb    NO     primary  A:
+|_part2      1       1   0   1      NO     xxxx Mb    NO     extended 
+  |_part3    1       1   0   1      NO       40 Mb    NO     logical  C:
+  |_part4    1       1   0   1      NO       32 Mb    NO     logical  D:
+  |_part5    1       1   0   1      NO     xxxx Mb    NO     logical  
+  |_part6    1       1   0   1      NO     xxxx Mb    NO     logical  
+DRIVE        0       2   0         YES      720 Kb    NO     disk     
+DRIVE        0       3   2         YES      720 Kb    NO     disk     E:
+RAMDISK      0       0   0          NO       60 Kb    NO     ramdisk  H:

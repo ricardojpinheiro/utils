@@ -51,19 +51,19 @@ type
             Drive, Floppy, RAMDisk: (DriveAssigned: char);
     end;
 var 
-    Parameters:         	TTinyString;
-    DeviceDriver:       	TDeviceDriver;
-    DriveLetter:        	TDriveLetter;
-    DevicePartition:    	TDevicePartition;
-    PartitionResult:    	TPartitionResult;
-    Devices:            	array [1..maxdevices] of DevicesOnMSX;
-    c:                  	char;
-    i, j, k:            	byte;
-    found:              	boolean;
+    Parameters:             TTinyString;
+    DeviceDriver:           TDeviceDriver;
+    DriveLetter:            TDriveLetter;
+    DevicePartition:        TDevicePartition;
+    PartitionResult:        TPartitionResult;
+    Devices:                array [1..maxdevices] of DevicesOnMSX;
+    c:                      char;
+    i, j, k:                byte;
+    found:                  boolean;
     HowManyDevices, 
     HowManyPartitions, 
-    HowManyDriveLetters: 	byte;
-    Drives:					array [0..maxdriveletters] of boolean;
+    HowManyDriveLetters:    byte;
+    Drives:                 array [0..maxdriveletters] of boolean;
 
 procedure CommandLine (KindOf: byte);
 (*
@@ -141,179 +141,179 @@ var
     ErrorCodeInvalidDeviceDriver, ErrorCodeInvalidPartition: byte;
     aux1, aux2: real;
 
-	procedure GatherInfoAboutDevices (HowManyDevices: byte; 
-									var ErrorCodeInvalidDeviceDriver: byte);
-	begin
-		with DeviceDriver do
-		begin
-			DriverIndex 	:= HowManyDevices;
-			DriverSlot 		:= 0;
-			DriverSegment 	:= 0;
-		end;
+    procedure GatherInfoAboutDevices (HowManyDevices: byte; 
+                                    var ErrorCodeInvalidDeviceDriver: byte);
+    begin
+        with DeviceDriver do
+        begin
+            DriverIndex     := HowManyDevices;
+            DriverSlot      := 0;
+            DriverSegment   := 0;
+        end;
 
         GetInfoDeviceDriver (DeviceDriver);
 
-		with Devices[HowManyDevices] do
-		begin
-			DeviceNumber 	:= DeviceDriver.DriverIndex;
-			DriverSlot      := DeviceDriver.DriverSlot;
+        with Devices[HowManyDevices] do
+        begin
+            DeviceNumber    := DeviceDriver.DriverIndex;
+            DriverSlot      := DeviceDriver.DriverSlot;
             DriverSegment   := DeviceDriver.DriverSegment;
             
-			if DeviceDriver.DeviceOrDrive = 0 then
-			begin									(* Drive-based driver.  *)
-				DeviceType 			:= Drive;    
-				NumberOfPartitions 	:= 0;
-			end
-			else
-				DeviceType 			:= Device;   	(* Device-based driver. *)
-		end;
-		ErrorCodeInvalidDeviceDriver := regs.A;
-	end;
-	
-	procedure GatherInfoAboutPrimaryAndExtendedPartitionsOnDevice (Device, 
-		Partition: byte; var ErrorCodeInvalidPartition, ExtendedPartition: byte);
-								
-	begin
-		
+            if DeviceDriver.DeviceOrDrive = 0 then
+            begin                                   (* Drive-based driver.  *)
+                DeviceType          := Drive;    
+                NumberOfPartitions  := 0;
+            end
+            else
+                DeviceType          := Device;      (* Device-based driver. *)
+        end;
+        ErrorCodeInvalidDeviceDriver := regs.A;
+    end;
+    
+    procedure GatherInfoAboutPrimaryAndExtendedPartitionsOnDevice (Device, 
+        Partition: byte; var ErrorCodeInvalidPartition, ExtendedPartition: byte);
+                                
+    begin
+        
 (*  Some information which is common for each device.                       *)
         
-        Devices[Device].LUN				:= 1;
+        Devices[Device].LUN             := 1;
         
-		DevicePartition.DriverSlot      := Devices[Device].DriverSlot;
-		DevicePartition.DriverSegment   := Devices[Device].DriverSegment;
-		DevicePartition.DeviceIndex     := Device;
-		DevicePartition.LUN             := Devices[Device].LUN;
-		DevicePartition.GetInfo         := true;
+        DevicePartition.DriverSlot      := Devices[Device].DriverSlot;
+        DevicePartition.DriverSegment   := Devices[Device].DriverSegment;
+        DevicePartition.DeviceIndex     := Device;
+        DevicePartition.LUN             := Devices[Device].LUN;
+        DevicePartition.GetInfo         := true;
 
 (*  If the device has a driver, then it would have partitions. *)
             
-		ErrorCodeInvalidPartition 	:= 0;
+        ErrorCodeInvalidPartition   := 0;
 
-(*	First we'll map all primary and extended partitions. *)
-			
-		DevicePartition.PrimaryPartition 	:= Partition;
-		DevicePartition.ExtendedPartition	:= 0;
-		
-		GetInfoDevicePartition (DevicePartition, PartitionResult);
-		
-		ErrorCodeInvalidPartition := regs.A;
+(*  First we'll map all primary and extended partitions. *)
+            
+        DevicePartition.PrimaryPartition    := Partition;
+        DevicePartition.ExtendedPartition   := 0;
+        
+        GetInfoDevicePartition (DevicePartition, PartitionResult);
+        
+        ErrorCodeInvalidPartition := regs.A;
 
-		if (PartitionResult.PartitionType <> 0) AND (ErrorCodeInvalidPartition <> ctIPART) then
-		begin
-			if PartitionResult.PartitionType in [1, 4, 6, 14] then
-			begin									(*	Primary partition. *)
-				Devices[Device].Partitions[Partition].PartitionNumber 	:= Partition;
-				Devices[Device].Partitions[Partition].PartitionType 	:= primary;
-				Devices[Device].NumberOfPartitions := Devices[Device].NumberOfPartitions + 1;
+        if (PartitionResult.PartitionType <> 0) AND (ErrorCodeInvalidPartition <> ctIPART) then
+        begin
+            if PartitionResult.PartitionType in [1, 4, 6, 14] then
+            begin                                   (*  Primary partition. *)
+                Devices[Device].Partitions[Partition].PartitionNumber   := Partition;
+                Devices[Device].Partitions[Partition].PartitionType     := primary;
+                Devices[Device].NumberOfPartitions := Devices[Device].NumberOfPartitions + 1;
 
-				Aux1 := PartitionResult.PartitionSizeMajor;
-				Aux2 := PartitionResult.PartitionSizeMinor;
-				FixBytes(Aux1, Aux2);
-				Devices[Device].Partitions[Partition].PartitionSize		:= SizeBytes (Aux1, Aux2);
+                Aux1 := PartitionResult.PartitionSizeMajor;
+                Aux2 := PartitionResult.PartitionSizeMinor;
+                FixBytes(Aux1, Aux2);
+                Devices[Device].Partitions[Partition].PartitionSize     := SizeBytes (Aux1, Aux2);
 
-				Aux1 := PartitionResult.StartSectorMajor;
-				Aux2 := PartitionResult.StartSectorMinor;
-				FixBytes(Aux1, Aux2);
-				Devices[Device].Partitions[Partition].PartitionSectors	:= SizeBytes (Aux1, Aux2);
-			end;
-			if PartitionResult.PartitionType = 5 then
-			begin									(* Extended partition. *)										
-				Devices[Device].Partitions[Partition].PartitionNumber 	:= Partition;
-				Devices[Device].Partitions[Partition].PartitionType 	:= extended;
-				ExtendedPartition 										:= Partition;
-				Devices[Device].NumberOfPartitions := Devices[Device].NumberOfPartitions + 1;
+                Aux1 := PartitionResult.StartSectorMajor;
+                Aux2 := PartitionResult.StartSectorMinor;
+                FixBytes(Aux1, Aux2);
+                Devices[Device].Partitions[Partition].PartitionSectors  := SizeBytes (Aux1, Aux2);
+            end;
+            if PartitionResult.PartitionType = 5 then
+            begin                                   (* Extended partition. *)                                       
+                Devices[Device].Partitions[Partition].PartitionNumber   := Partition;
+                Devices[Device].Partitions[Partition].PartitionType     := extended;
+                ExtendedPartition                                       := Partition;
+                Devices[Device].NumberOfPartitions := Devices[Device].NumberOfPartitions + 1;
 
-				Aux1 := PartitionResult.PartitionSizeMajor;
-				Aux2 := PartitionResult.PartitionSizeMinor;
-				FixBytes(Aux1, Aux2);
-				Devices[Device].Partitions[Partition].PartitionSize		:= SizeBytes (Aux1, Aux2);
+                Aux1 := PartitionResult.PartitionSizeMajor;
+                Aux2 := PartitionResult.PartitionSizeMinor;
+                FixBytes(Aux1, Aux2);
+                Devices[Device].Partitions[Partition].PartitionSize     := SizeBytes (Aux1, Aux2);
 
-				Aux1 := PartitionResult.StartSectorMajor;
-				Aux2 := PartitionResult.StartSectorMinor;
-				FixBytes(Aux1, Aux2);
-				Devices[Device].Partitions[Partition].PartitionSectors	:= SizeBytes (Aux1, Aux2);
-			end;
-		
+                Aux1 := PartitionResult.StartSectorMajor;
+                Aux2 := PartitionResult.StartSectorMinor;
+                FixBytes(Aux1, Aux2);
+                Devices[Device].Partitions[Partition].PartitionSectors  := SizeBytes (Aux1, Aux2);
+            end;
+        
 {-----------------------------------------------------------------------------}
 {
 writeln('Device ', Device, ' partition ', Partition, '  ');
 writeln('Slot ', Devices[Device].DriverSlot, ' Segment: ', Devices[Device].DriverSegment, 
-		' LUN ', Devices[Device].LUN);
+        ' LUN ', Devices[Device].LUN);
 
 case Devices[Device].Partitions[Partition].PartitionType of
-	primary:    writeln('It''s a primary partition. ');
-	extended:   writeln('It''s a extended partition.');
-	logical:   	writeln('It''s a logical partition.');
+    primary:    writeln('It''s a primary partition. ');
+    extended:   writeln('It''s a extended partition.');
+    logical:    writeln('It''s a logical partition.');
 end;
 
 writeln ('Partition size: ', Devices[Device].Partitions[Partition].PartitionSize:2:0);
 writeln ('Initial sector: ', Devices[Device].Partitions[Partition].PartitionSectors:2:0);
 writeln;    
 }
-{-----------------------------------------------------------------------------} 	
-		end;
-	end;
-	
-	procedure GatherInfoAboutLogicalPartitionsOnDevice(Device, Partition: byte; 
-						var ErrorCodeInvalidPartition, ExtendedPartition: byte);
-	var
-		LogicalPartition: byte;
-	begin
-		
+{-----------------------------------------------------------------------------}     
+        end;
+    end;
+    
+    procedure GatherInfoAboutLogicalPartitionsOnDevice(Device, Partition: byte; 
+                        var ErrorCodeInvalidPartition, ExtendedPartition: byte);
+    var
+        LogicalPartition: byte;
+    begin
+        
 (*  Some information which is common for each device.                       *)
         
         LogicalPartition := ExtendedPartition + Partition;
         
-        Devices[Device].LUN				:= 1;
+        Devices[Device].LUN             := 1;
         
-		DevicePartition.DriverSlot      := Devices[Device].DriverSlot;
-		DevicePartition.DriverSegment   := Devices[Device].DriverSegment;
-		DevicePartition.DeviceIndex     := Device;
-		DevicePartition.LUN             := Devices[Device].LUN;
-		DevicePartition.GetInfo         := true;
+        DevicePartition.DriverSlot      := Devices[Device].DriverSlot;
+        DevicePartition.DriverSegment   := Devices[Device].DriverSegment;
+        DevicePartition.DeviceIndex     := Device;
+        DevicePartition.LUN             := Devices[Device].LUN;
+        DevicePartition.GetInfo         := true;
 
 (*  If the device has a driver, then it would have partitions. *)
             
-		ErrorCodeInvalidPartition 	:= 0;
+        ErrorCodeInvalidPartition   := 0;
 
-(*	Here we must find all logical partitions into the extended partition. *)
-			
-		DevicePartition.PrimaryPartition 	:= ExtendedPartition;
-		DevicePartition.ExtendedPartition	:= Partition;
+(*  Here we must find all logical partitions into the extended partition. *)
+            
+        DevicePartition.PrimaryPartition    := ExtendedPartition;
+        DevicePartition.ExtendedPartition   := Partition;
 
-		GetInfoDevicePartition (DevicePartition, PartitionResult);
-		
-		ErrorCodeInvalidPartition := regs.A;
+        GetInfoDevicePartition (DevicePartition, PartitionResult);
+        
+        ErrorCodeInvalidPartition := regs.A;
 
-		if (PartitionResult.PartitionType <> 0) AND (ErrorCodeInvalidPartition <> ctIPART) then
-		begin
-		if PartitionResult.PartitionType in [1, 4, 6, 14] then
-			begin									(*	Primary partition. *)
-				Devices[Device].Partitions[LogicalPartition].PartitionNumber 	:= LogicalPartition;
-				Devices[Device].Partitions[LogicalPartition].PartitionType 		:= logical;
-				Devices[Device].NumberOfPartitions := Devices[Device].NumberOfPartitions + 1;
+        if (PartitionResult.PartitionType <> 0) AND (ErrorCodeInvalidPartition <> ctIPART) then
+        begin
+        if PartitionResult.PartitionType in [1, 4, 6, 14] then
+            begin                                   (*  Primary partition. *)
+                Devices[Device].Partitions[LogicalPartition].PartitionNumber    := LogicalPartition;
+                Devices[Device].Partitions[LogicalPartition].PartitionType      := logical;
+                Devices[Device].NumberOfPartitions := Devices[Device].NumberOfPartitions + 1;
 
-				Aux1 := PartitionResult.PartitionSizeMajor;
-				Aux2 := PartitionResult.PartitionSizeMinor;
-				FixBytes(Aux1, Aux2);
-				Devices[Device].Partitions[LogicalPartition].PartitionSize		:= SizeBytes (Aux1, Aux2);
+                Aux1 := PartitionResult.PartitionSizeMajor;
+                Aux2 := PartitionResult.PartitionSizeMinor;
+                FixBytes(Aux1, Aux2);
+                Devices[Device].Partitions[LogicalPartition].PartitionSize      := SizeBytes (Aux1, Aux2);
 
-				Aux1 := PartitionResult.StartSectorMajor;
-				Aux2 := PartitionResult.StartSectorMinor;
-				FixBytes(Aux1, Aux2);
-				Devices[Device].Partitions[LogicalPartition].PartitionSectors		:= SizeBytes (Aux1, Aux2);
-			end;
+                Aux1 := PartitionResult.StartSectorMajor;
+                Aux2 := PartitionResult.StartSectorMinor;
+                FixBytes(Aux1, Aux2);
+                Devices[Device].Partitions[LogicalPartition].PartitionSectors       := SizeBytes (Aux1, Aux2);
+            end;
 
 {-----------------------------------------------------------------------------}
 {
 writeln('Device ', Device, ' partition ', LogicalPartition, '  ');
 writeln('Slot ', Devices[Device].DriverSlot, ' Segment: ', Devices[Device].DriverSegment, 
-		' LUN ', Devices[Device].LUN);
+        ' LUN ', Devices[Device].LUN);
 
 case Devices[Device].Partitions[LogicalPartition].PartitionType of
-	primary:    writeln('It''s a primary partition. ');
-	extended:   writeln('It''s a extended partition.');
-	logical:   	writeln('It''s a logical partition.');
+    primary:    writeln('It''s a primary partition. ');
+    extended:   writeln('It''s a extended partition.');
+    logical:    writeln('It''s a logical partition.');
 end;
 
 writeln ('Partition size: ', Devices[Device].Partitions[LogicalPartition].PartitionSize:2:0);
@@ -323,79 +323,79 @@ writeln ('Error Code: ', regs.A);
 writeln ('PartitionResult.PartitionType: ', PartitionResult.PartitionType);
 writeln;    
 }
-{-----------------------------------------------------------------------------} 	
-		end;
-	end;
-	
-	procedure GatherInfoAboutDriveLettersOnPartitions (DriveLetterNumber: byte; Device: byte);
-	var
-		Partition, i: byte;
-	begin
+{-----------------------------------------------------------------------------}     
+        end;
+    end;
+    
+    procedure GatherInfoAboutDriveLettersOnPartitions (DriveLetterNumber: byte; Device: byte);
+    var
+        Partition, i: byte;
+    begin
 
-(*	Here we must find all drive letters which is assigned to a device. *)
+(*  Here we must find all drive letters which is assigned to a device. *)
         
         DriveLetter.PhysicalDrive := chr(64 + DriveLetterNumber);
         GetInfoDriveLetter (DriveLetter);
 
-(*	We must find the relationship comparing the PartitionSectors and the 
-	FirstDeviceSectorNumber. *)
+(*  We must find the relationship comparing the PartitionSectors and the 
+    FirstDeviceSectorNumber. *)
 
-(*	Then we'll try logical partitions. *)
+(*  Then we'll try logical partitions. *)
         
         with DriveLetter do
         begin
-			i := 1;
-			
+            i := 1;
+            
 {------------------------------------------------------------------------------}
 {
-		writeln('DriveStatus: ', DriveStatus, ' DriverSlot ', DriverSlot, ' DriverSegment ', DriverSegment);
-		writeln('LUN ', LUN, ' DeviceIndex ', DeviceIndex, ' DeviceNumber ', Devices[Device].DeviceNumber);
-		case Devices[Device].Partitions[i].PartitionType of
-			primary: 	writeln(' Devices[', Device, '].Partitions[', i, '].PartitionType: primary');
-			extended: 	writeln(' Devices[', Device, '].Partitions[', i, '].PartitionType: extended');
-			logical: 	writeln(' Devices[', Device, '].Partitions[', i, '].PartitionType: logical');
-		end;
+        writeln('DriveStatus: ', DriveStatus, ' DriverSlot ', DriverSlot, ' DriverSegment ', DriverSegment);
+        writeln('LUN ', LUN, ' DeviceIndex ', DeviceIndex, ' DeviceNumber ', Devices[Device].DeviceNumber);
+        case Devices[Device].Partitions[i].PartitionType of
+            primary:    writeln(' Devices[', Device, '].Partitions[', i, '].PartitionType: primary');
+            extended:   writeln(' Devices[', Device, '].Partitions[', i, '].PartitionType: extended');
+            logical:    writeln(' Devices[', Device, '].Partitions[', i, '].PartitionType: logical');
+        end;
 }
 {------------------------------------------------------------------------------}
 
-			while Devices[Device].Partitions[i].PartitionSectors <> FirstDeviceSectorNumber do
-				i := i + 1;
+            while Devices[Device].Partitions[i].PartitionSectors <> FirstDeviceSectorNumber do
+                i := i + 1;
 
-			if i <= Devices[Device].NumberOfPartitions then
-			begin
-				Devices[Device].Partitions[i].DriveAssignedToPartition := DriveLetter.PhysicalDrive;
-				Drives[DriveLetterNumber] := true;	(*	This drive letter is busy. *)
+            if i <= Devices[Device].NumberOfPartitions then
+            begin
+                Devices[Device].Partitions[i].DriveAssignedToPartition := DriveLetter.PhysicalDrive;
+                Drives[DriveLetterNumber] := true;  (*  This drive letter is busy. *)
 
 {------------------------------------------------------------------------------}
 {
 writeln ('Found drive letter ', DriveLetter.PhysicalDrive);
 writeln ('It''s related to device ', Device, ' slot ', Devices[Device].DriverSlot, 
-		' Segment ', Devices[Device].DriverSegment, ' LUN ', Devices[Device].LUN,
-		' Partition ', Devices[Device].Partitions[i].PartitionNumber);
+        ' Segment ', Devices[Device].DriverSegment, ' LUN ', Devices[Device].LUN,
+        ' Partition ', Devices[Device].Partitions[i].PartitionNumber);
 }
 {------------------------------------------------------------------------------}
-			end;
-		end;
-	end;
+            end;
+        end;
+    end;
 
-	procedure GatherInfoAboutDrive (DriveLetterNumber: byte; Device: byte);
-	begin
+    procedure GatherInfoAboutDrive (DriveLetterNumber: byte; Device: byte);
+    begin
 
-(*	Here we must find all drive letters which is assigned to a drive. *)
-		if Drives[DriveLetterNumber] = false then
-		begin
-			DriveLetter.PhysicalDrive := chr(64 + DriveLetterNumber);
-			GetInfoDriveLetter (DriveLetter);
+(*  Here we must find all drive letters which is assigned to a drive. *)
+        if Drives[DriveLetterNumber] = false then
+        begin
+            DriveLetter.PhysicalDrive := chr(64 + DriveLetterNumber);
+            GetInfoDriveLetter (DriveLetter);
 
-(*	We must find a relationship between the drive letter and the drive. *)
+(*  We must find a relationship between the drive letter and the drive. *)
         
-			with DriveLetter do
-			begin
-				if 	(Devices[Device].DriverSlot = DriverSlot) AND
-					(DriveStatus = 1) then
-				begin									(*	Found a related drive. *)
-					Devices[Device].DriveAssigned := DriveLetter.PhysicalDrive;
-					Drives[DriveLetterNumber] := true;	(*	This drive letter is busy. *)
+            with DriveLetter do
+            begin
+                if  (Devices[Device].DriverSlot = DriverSlot) AND
+                    (DriveStatus = 1) then
+                begin                                   (*  Found a related drive. *)
+                    Devices[Device].DriveAssigned := DriveLetter.PhysicalDrive;
+                    Drives[DriveLetterNumber] := true;  (*  This drive letter is busy. *)
 
 {------------------------------------------------------------------------------}
 {
@@ -404,31 +404,31 @@ write ('. It''s related to device ', Device, ' slot ', Devices[Device].DriverSlo
 writeln;
 }
 {------------------------------------------------------------------------------}
-				end;
-			end;
-		end;	
-	end;
-	
-	procedure GatherInfoAboutRAMDisk (Device: byte);
-	begin
-		if Drives[8] = false then
-		begin
-			DriveLetter.PhysicalDrive := chr(73);
-			GetInfoDriveLetter (DriveLetter);
+                end;
+            end;
+        end;    
+    end;
+    
+    procedure GatherInfoAboutRAMDisk (Device: byte);
+    begin
+        if Drives[8] = false then
+        begin
+            DriveLetter.PhysicalDrive := chr(73);
+            GetInfoDriveLetter (DriveLetter);
 
-			with DriveLetter do
-			begin
-				Devices[Device].DeviceNumber 		:= DeviceIndex;
-				Devices[Device].DriverSlot 			:= DriverSlot;
-				Devices[Device].DriverSegment 		:= DriverSegment;
-				Devices[Device].LUN 				:= LUN;
-				Devices[Device].NumberOfPartitions 	:= 0;
-				Devices[Device].DeviceType 			:= RAMDisk;
-			
-				if 	(DriveStatus = 4) then
-				begin									(*	Found a related drive. *)
-					Devices[Device].DriveAssigned := 'H';
-					Drives[8] := true;	(*	This drive letter is busy. *)
+            with DriveLetter do
+            begin
+                Devices[Device].DeviceNumber        := DeviceIndex;
+                Devices[Device].DriverSlot          := DriverSlot;
+                Devices[Device].DriverSegment       := DriverSegment;
+                Devices[Device].LUN                 := LUN;
+                Devices[Device].NumberOfPartitions  := 0;
+                Devices[Device].DeviceType          := RAMDisk;
+            
+                if  (DriveStatus = 4) then
+                begin                                   (*  Found a related drive. *)
+                    Devices[Device].DriveAssigned := 'H';
+                    Drives[8] := true;  (*  This drive letter is busy. *)
 
 {------------------------------------------------------------------------------}
 {
@@ -437,10 +437,10 @@ write ('. It''s related to device ', Device, ' slot ', Devices[Device].DriverSlo
 writeln;
 }
 {------------------------------------------------------------------------------}
-				end;
-			end;
-		end;
-	end;
+                end;
+            end;
+        end;
+    end;
 
 begin
     FillChar(Devices, SizeOf ( Devices ), 0 );
@@ -450,17 +450,17 @@ begin
 
     Dev := 0;
     ErrorCodeInvalidDeviceDriver := 0;
-	
-	while (Dev <= maxdevices) AND (ErrorCodeInvalidDeviceDriver <> ctIDRVR) do
-	begin
-		Dev := Dev + 1;
-		GatherInfoAboutDevices (Dev, ErrorCodeInvalidDeviceDriver);
-		
+    
+    while (Dev <= maxdevices) AND (ErrorCodeInvalidDeviceDriver <> ctIDRVR) do
+    begin
+        Dev := Dev + 1;
+        GatherInfoAboutDevices (Dev, ErrorCodeInvalidDeviceDriver);
+        
 {-----------------------------------------------------------------------------}
 {
 case Devices[Dev].DeviceType of
-    Drive: 	write (' Device ', Devices[Dev].DeviceNumber , ' has a drive-based driver. ');
-    Device:	write (' Device ', Dev , ' has a device-based driver. ');
+    Drive:  write (' Device ', Devices[Dev].DeviceNumber , ' has a drive-based driver. ');
+    Device: write (' Device ', Dev , ' has a device-based driver. ');
 end;
 write ('Driver Slot: ', Devices[Dev].DriverSlot, ' Segment: ', Devices[Dev].DriverSegment);
 writeln;
@@ -469,47 +469,47 @@ writeln;
 
     end;
 
-	HowManyDevices := Dev - 1;
+    HowManyDevices := Dev - 1;
 
-    Dev 	:= 0;
-    Part	:= 1;
+    Dev     := 0;
+    Part    := 1;
     ErrorCodeInvalidPartition := 0;
     
     while Dev <= HowManyDevices do
     begin
-		case Devices[Dev].DeviceType of
-			Device:		begin
-							while ErrorCodeInvalidPartition <> ctIPART do
-							begin		(* Find primary and extended partitions. *)
-								GatherInfoAboutPrimaryAndExtendedPartitionsOnDevice 
-								(Dev, Part, ErrorCodeInvalidPartition, ExtendedPartition);
-								Part := Part + 1;
-							end;
-							
-							ErrorCodeInvalidPartition := 0;
-							Part := 1;		(* Find all logical partitions. *)
-							while ErrorCodeInvalidPartition <> ctIPART do
-							begin
-								GatherInfoAboutLogicalPartitionsOnDevice(Dev, Part, 
-									ErrorCodeInvalidPartition, ExtendedPartition);
-								Part := Part + 1;
-							end;
+        case Devices[Dev].DeviceType of
+            Device:     begin
+                            while ErrorCodeInvalidPartition <> ctIPART do
+                            begin       (* Find primary and extended partitions. *)
+                                GatherInfoAboutPrimaryAndExtendedPartitionsOnDevice 
+                                (Dev, Part, ErrorCodeInvalidPartition, ExtendedPartition);
+                                Part := Part + 1;
+                            end;
+                            
+                            ErrorCodeInvalidPartition := 0;
+                            Part := 1;      (* Find all logical partitions. *)
+                            while ErrorCodeInvalidPartition <> ctIPART do
+                            begin
+                                GatherInfoAboutLogicalPartitionsOnDevice(Dev, Part, 
+                                    ErrorCodeInvalidPartition, ExtendedPartition);
+                                Part := Part + 1;
+                            end;
 
 (* Find all relationships between partitions and drive letters. *)
 
-							for j := 1 to maxdriveletters do
-								GatherInfoAboutDriveLettersOnPartitions (j, Dev);
-						end;
+                            for j := 1 to maxdriveletters do
+                                GatherInfoAboutDriveLettersOnPartitions (j, Dev);
+                        end;
 
-			Drive:		for j := 1 to maxdriveletters do
-							GatherInfoAboutDrive (j, Dev);
-		end;
-		Dev := Dev + 1;
-	end;
-	    
-	GatherInfoAboutRAMDisk (Dev);
+            Drive:      for j := 1 to maxdriveletters do
+                            GatherInfoAboutDrive (j, Dev);
+        end;
+        Dev := Dev + 1;
+    end;
+        
+    GatherInfoAboutRAMDisk (Dev);
 
-	HowManyDevices := Dev;
+    HowManyDevices := Dev;
 end;
 
 procedure PrintInfoAboutPartitions;
@@ -518,16 +518,16 @@ begin
 
 {-----------------------------------------------------------------------------}
 for i := 0 to HowManyDevices do
-	case Devices[i].DeviceType of
-		Drive: writeln(i, ' Drive-based driver. ');
-		Device: writeln(i, ' Device-based driver. ');
-		RAMDisk: writeln(i, ' RAMDisk. ');
-	end;
+    case Devices[i].DeviceType of
+        Drive: writeln(i, ' Drive-based driver. ');
+        Device: writeln(i, ' Device-based driver. ');
+        RAMDisk: writeln(i, ' RAMDisk. ');
+    end;
 {-----------------------------------------------------------------------------}
 
     
     for i := 1 to maxdriveletters do
-		writeln (' Drive ', chr(64 + i), ': ', Drives[i]);
+        writeln (' Drive ', chr(64 + i), ': ', Drives[i]);
     
     for i := 1 to HowManyDevices do
     begin
@@ -545,19 +545,19 @@ for i := 0 to HowManyDevices do
                             write(' Device-based driver. ');
                             writeln(' Partitions: ', Devices[i].NumberOfPartitions);
 {
-							case Devices[i].Partitions[j].PartitionType of
-								primary: 	writeln(' Partition ', Devices[i].Partitions[j].PartitionNumber, ' is a primary partition.');
-								extended: 	writeln(' Partition ', Devices[i].Partitions[j].PartitionNumber, ' is a extended partition.');
-								logical: 	writeln(' Partition ', Devices[i].Partitions[j].PartitionNumber, ' is a logical partition.');
-							end;
+                            case Devices[i].Partitions[j].PartitionType of
+                                primary:    writeln(' Partition ', Devices[i].Partitions[j].PartitionNumber, ' is a primary partition.');
+                                extended:   writeln(' Partition ', Devices[i].Partitions[j].PartitionNumber, ' is a extended partition.');
+                                logical:    writeln(' Partition ', Devices[i].Partitions[j].PartitionNumber, ' is a logical partition.');
+                            end;
 
-							if ord(Devices[i].Partitions[j].DriveAssignedToPartition) <> 0 then
-								writeln(' Drive letter: ', Devices[i].Partitions[j].DriveAssignedToPartition);
+                            if ord(Devices[i].Partitions[j].DriveAssignedToPartition) <> 0 then
+                                writeln(' Drive letter: ', Devices[i].Partitions[j].DriveAssignedToPartition);
 
-							writeln (' Partition size: ', Devices[i].Partitions[j].PartitionSize:0:0, ' sectors, or ', 
-															((Devices[i].Partitions[j].PartitionSize)/2048):0:0, ' Mb.');
-							writeln (' Initial sector: ', Devices[i].Partitions[j].PartitionSectors:0:0);
-}							
+                            writeln (' Partition size: ', Devices[i].Partitions[j].PartitionSize:0:0, ' sectors, or ', 
+                                                            ((Devices[i].Partitions[j].PartitionSize)/2048):0:0, ' Mb.');
+                            writeln (' Initial sector: ', Devices[i].Partitions[j].PartitionSectors:0:0);
+}                           
 
                             while ( j <= Devices[i].NumberOfPartitions ) do
                             begin
@@ -570,7 +570,7 @@ for i := 0 to HowManyDevices do
                                 end;
                                 writeln(' Drive letter: ', Devices[i].Partitions[j].DriveAssignedToPartition);
                                 writeln(' Partition size: ', (Devices[i].Partitions[j].PartitionSize * 512):0:0, 
-										' bytes, or ', (Devices[i].Partitions[j].PartitionSize/2097152):2:2, ' Gb.');
+                                        ' bytes, or ', (Devices[i].Partitions[j].PartitionSize/2097152):2:2, ' Gb.');
                                 writeln(' First sector of partition: ', Devices[i].Partitions[j].PartitionSectors:0:0);
                                 j := j + 1;
                             end;
@@ -588,8 +588,8 @@ end;
 
 BEGIN
 (*  Detects if it's MSX-DOS 1, MSX-DOS 2 or Nextor. *)
-	
-	FillChar (Drives, SizeOf(Drives), false);
+    
+    FillChar (Drives, SizeOf(Drives), false);
 
     case DOSVEREnhancedDetection of
         0:  begin
