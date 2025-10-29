@@ -72,6 +72,9 @@ BEGIN
     Character := ' ';
     clrscr;
     
+    SplitSlotNumber (141, i, j);
+    writeln(i, ' ', j);
+    
     for i := 0 to ctMaxSlots - 1 do
         for j := 0 to CtMaxSecSlots - 1 do
         begin

@@ -273,7 +273,7 @@ begin
         LUN := 1;
         
         (* Get Info? *)
-        GetInfo := true;
+        GetInfo := false;
         
         (* Primary and Extended Partition. *)
         PrimaryPartition    := 1;
@@ -283,7 +283,6 @@ begin
                     ' Segment: ', DriverSegment, 
                     ' Device: ', DeviceIndex,
                     ' LUN: ', LUN);
-
     end;
     
     GetInfoDevicePartition (DevicePartition, PartitionResult);
@@ -325,6 +324,7 @@ var
     RealData: real;
     LUNData: array [0..11] of byte;
     RoutineDeviceDriver: TRoutineDeviceDriver;
+    temp1: TShortString;
 
 begin
 (*  DEV_INFO. *)
@@ -339,9 +339,9 @@ begin
 
         with RoutineDeviceDriver do
         begin
-            RoutineAddress := ctDEV_INFO;
-            DriverSlot := nNextorSlotNumber;
-            DriverSegment := $FF;
+            RoutineAddress 	:= ctDEV_INFO;
+            DriverSlot 		:= nNextorSlotNumber;
+            DriverSegment 	:= $FF;
             
             Data[0] := 0;   (*F*)
             Data[1] := b;   (*A*)
@@ -371,6 +371,7 @@ begin
                 2: write('Device name string: ');
                 3: write('Serial number string: ');
             end;
+
             for i := 0 to 63 do 
                 write(chr(Information[i]));
             writeln;
@@ -628,23 +629,23 @@ BEGIN
             '6': GDLIExample;
             '7': GPARTExample;
             '8': CDRVRExample;
-            '9':    begin
-                        GPARTExample;
-                        MAPDRVExample;
-                    end;
+            '9': begin
+					GPARTExample;
+					MAPDRVExample;
+				 end;
             'A': Z80MODEExample;
             'B': NextorKernelsExample (true);
             'C': GETCLUSExample;
-            'X':    begin
-                        writeln (' This code was written to have some examples of  how we can use the Nextor '); 
-                        writeln (' function calls.  There are some  function calls that wasn''t  implemented,');
-                        writeln (' as  FOUT, ZSTROUT, RDDRW, and WRDRV.  The reasons may vary, such as  lack');
-                        writeln (' of interest or the lack of need:  FOUT and ZSTROUT, for example, can even ');
-                        writeln (' be implemented,  but there are some routines  which are as good as  these');
-                        writeln (' Nextor  function  calls.  So,  I wrote code only to  have all the  Nextor');
-                        writeln (' function calls that I thought it was important.  If you want to write the');
-                        writeln (' missing Nextor function calls, be my guest. ');
-                    end;
+            'X': begin
+					writeln (' This code was written to have some examples of  how we can use the Nextor '); 
+					writeln (' function calls.  There are some  function calls that wasn''t  implemented,');
+					writeln (' as  FOUT, ZSTROUT, RDDRW, and WRDRV.  The reasons may vary, such as  lack');
+					writeln (' of interest or the lack of need:  FOUT and ZSTROUT, for example, can even ');
+					writeln (' be implemented,  but there are some routines  which are as good as  these');
+					writeln (' Nextor  function  calls.  So,  I wrote code only to  have all the  Nextor');
+					writeln (' function calls that I thought it was important.  If you want to write the');
+					writeln (' missing Nextor function calls, be my guest. ');
+				 end;
             'Z': exit;
         end;
         Character := readkey;
