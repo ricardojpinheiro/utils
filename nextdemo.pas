@@ -401,7 +401,7 @@ begin
         Data[0] := 0;   (*F*)
         Data[1] := i;   (*A*)
         Data[2] := 0;   (*C*)
-        Data[3] := j;   (*B*)
+        Data[3] := 1;   (*B*)
         Data[4] := 0;   (*E*)
         Data[5] := 0;   (*D*)
         Data[6] := lo(Addr(Information));   (*L*)
