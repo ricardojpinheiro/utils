@@ -260,8 +260,8 @@ End;
 Procedure SplitSlotNumber( nSlotNumber : TSlotNumber;
                            Var nPrimarySlot, nSecondarySlot : Byte );
 Begin
-    nPrimarySlot   := nSlotNumber And 3;
-    nSecondarySlot := ( nSlotNumber And 12 ) div 4;
+    nPrimarySlot   	:= 	nSlotNumber And 3;
+    nSecondarySlot 	:= ( nSlotNumber And 12 ) div 4;
 End;
 
 function GetNextorErrorCode (ErrorCode: byte): TShortString;
@@ -306,7 +306,7 @@ begin
             regs.HL := Addr(Data);
 
             Data[0] := 0;   (*Register F*)
-            Data[1] := i;   (*Register A: Device index (1 to 7).*)
+            Data[1] := 0;   (*Register A: Device index (1 to 7).*)
             Data[2] := 0;   (*Register C*)
             Data[3] := 0;   (*Register B: Information to return - basic.*)
             Data[4] := 0;   (*Register E*)

@@ -1,0 +1,12 @@
+NAME N:L SL:SB RM SIZE RO TYPE LT
+NAME    N:L ST:SB RM SIZE   RO TYPE LT
+DEVICE  1 1  1 0  0   200M  0  disk
+|_p1    1 1  1 0  0    40M  0  prim A:
+|_ext   1 1  1 0            0  ext 
+  |_p3  1 1  1 0  0    40M  0  log  C:
+  |_p4  1 1  1 0  0    32M  0  log  D:
+  |_p5  1 1  1 0  0  xxxxM  0  log  
+  |_p6  1 1  1 0  0  xxxxM  0  log  
+DRIVE   1 2  0    0   720K  0  disk     
+DRIVE   1 3  2    0   720K  0  disk E:
+RAMDISK 1 0  0    0    60K  0  ram  H:

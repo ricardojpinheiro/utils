@@ -184,13 +184,13 @@ begin
     with DeviceDriver do
     begin
         DriverIndex := i;
-        DriverSlot := HardwareDevices[1];
+        DriverSlot := HardwareDevices[i];
         DriverSegment := $FF;
     end;
 
     GetInfoDeviceDriver (DeviceDriver);
 
-    writeln('Error code = ', regs.A);
+    writeln('Error code = ', GetNextorErrorCode(regs.A));
 
     writeln;
     with DeviceDriver do
@@ -200,7 +200,7 @@ begin
         writeln (' Driver Segment: ', DriverSegment);
         writeln (' How many assigned drive letters at boot time: ', DriveLettersAtBootTime);
         writeln (' First drive letter at boot time: ', FirstDriveLetter);
-		writeln ( '-=> If there is not any assigned drive letters at boot time, please disregard.');
+		writeln ('  If there is not any assigned drive letters at boot time, please disregard.');
         if NextorOrMSXDOSDriver = 0 then
             writeln (' It''s a MSX-DOS driver.')
         else
@@ -384,24 +384,18 @@ begin
 
     FillChar(RoutineDeviceDriver,   SizeOf (RoutineDeviceDriver),   chr(32));
 
-    writeln (' Which device do you want to get information? (1 to 7)');
-    c := readkey;
-    val (c, i, k);
-
-    writeln (' Which LUN do you want to get information?');
-    c := readkey;
-    val (c, j, k);
+	j := 1;
 
     with RoutineDeviceDriver do
     begin
-        RoutineAddress := ctLUN_INFO;
-        DriverSlot := nNextorSlotNumber;
-        DriverSegment := $FF;
+        RoutineAddress 	:= ctLUN_INFO;
+        DriverSlot 		:= nNextorSlotNumber;
+        DriverSegment 	:= $FF;
 
         Data[0] := 0;   (*F*)
-        Data[1] := i;   (*A*)
+        Data[1] := b;   (*A*)
         Data[2] := 0;   (*C*)
-        Data[3] := 1;   (*B*)
+        Data[3] := j;   (*B*)
         Data[4] := 0;   (*E*)
         Data[5] := 0;   (*D*)
         Data[6] := lo(Addr(Information));   (*L*)
@@ -410,7 +404,7 @@ begin
 
     CallRoutineInDeviceDriver (RoutineDeviceDriver);
 
-    writeln('Device ', i);
+    writeln('Device ', b);
     
     with RoutineDeviceDriver do
     begin
@@ -449,44 +443,38 @@ begin
         else
             writeln('Error, device or LUN not available.');
     end;
-{
+
+    writeln;
     writeln('DEV_STATUS: ');
 
     FillChar(RoutineDeviceDriver,   SizeOf (RoutineDeviceDriver),   chr(32));
     
     with RoutineDeviceDriver do
     begin
-        RoutineAddress := ctDEV_STATUS;
-        DriverSlot := nNextorSlotNumber;
-        DriverSegment := $FF;       
+        RoutineAddress 	:= ctDEV_STATUS;
+        DriverSlot 		:= nNextorSlotNumber;
+        DriverSegment 	:= $FF;       
 
-        for i := 1 to 7 do
-        begin
-            Data[0] := 0;   (*F*)
-            Data[1] := i;   (*A*)
-            Data[2] := 0;   (*C*)
-            Data[3] := 1;   (*B*)
-            Data[4] := 0;   (*E*)
-            Data[5] := 0;   (*D*)
-            Data[6] := 0;   (*L*)
-            Data[7] := 0;   (*H*)
+		Data[0] := 0;   (*F*)
+		Data[1] := b;   (*A*)
+		Data[2] := 0;   (*C*)
+		Data[3] := j;   (*B*)
+		Data[4] := 0;   (*E*)
+		Data[5] := 0;   (*D*)
+		Data[6] := 0;   (*L*)
+		Data[7] := 0;   (*H*)
 
-            Data[6] := lo(Addr(LUNData));   (*L*)
-            Data[7] := hi(Addr(LUNData));   (*H*)
-
-            CallRoutineInDeviceDriver (RoutineDeviceDriver);
-            
-            writeln (' Device ', Data[1], ' LUN ', Data[3]);
-            case ErrorCode of
-                0:   writeln (ErrorCode, ' Device/logical unit not available, or the device or LUN supplied is invalid.');
-                1:   writeln (ErrorCode, ' Device/logical unit is available, not changed since the last status request.');
-                2:   writeln (ErrorCode, ' Device/logical unit is available, changed since the last status request.');
-                3:   writeln (ErrorCode, ' Device/logical unit is available, not possible to determine if changed or not.');
-                else writeln (ErrorCode, ' Who cares.');
-            end;
-        end;
+		CallRoutineInDeviceDriver (RoutineDeviceDriver);
+		
+		writeln (' Device ', b, ' LUN ', j);
+		case ErrorCode of
+			0:   writeln (ErrorCode, ' Device/logical unit not available, or the device or LUN supplied is invalid.');
+			1:   writeln (ErrorCode, ' Device/logical unit is available, not changed since the last status request.');
+			2:   writeln (ErrorCode, ' Device/logical unit is available, changed since the last status request.');
+			3:   writeln (ErrorCode, ' Device/logical unit is available, not possible to determine if changed or not.');
+			else writeln (ErrorCode, ' Who cares.');
+		end;
     end;
-}   
 end;
 
 procedure MAPDRVExample;
@@ -597,8 +585,8 @@ var
     i: byte;
 
 BEGIN
-    NextorKernelsExample (false);
-    Character := ' ';
+	NextorKernelsExample (false);
+    Character := chr(32);
     while (Character <> 'F') do
     begin
         clrscr;

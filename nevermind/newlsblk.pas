@@ -87,7 +87,7 @@ begin
                 writeln('| \__ \ |_) | |   <    ');
                 writeln('|_|___/_.__/|_|_|\_\   ');             
                 writeln;
-                Writeln('Version 0.2 - Copyright (c) 2024-25 by');
+                Writeln('Version 0.3 - Copyright (c) 2024-26 by');
                 Writeln('Brazilian MSX Crew. Some rights');
                 Writeln('reserved (not many!).');
                 writeln;
@@ -107,6 +107,7 @@ begin
                 Writeln('Usage: lsblk <parameters>');
                 Writeln('Shows info about block devices on MSX.');
                 writeln;
+{
                 Writeln('Parameters: ');
                 writeln('None: Shows the current block devices.');
                 Writeln('/b - Print the sizes in bytes.');
@@ -114,6 +115,7 @@ begin
                 writeln('partition.');
                 Writeln('/f - Shows the used filesystems too.');
                 writeln('/l - Shows block devices as a list.');
+}
                 Writeln('/h - Show this help text and exit.');
                 Writeln('/v - Show version info and exit.');
                 writeln;
@@ -181,20 +183,9 @@ var
                 DeviceType          := Device;      (* Device-based driver. *)
         end;
 
-{---------------------------------------------------------------------------}
-
-(* Forçando a barra para setar o 2o device como... Device. Provavelmente será
-   necessário trocar a forma de detecção, usando DEV_INFO e LUN_INFO. *)
-
-{
-if Dev = 2 then
-    Devices[Dev].DeviceType := Device;
-}
-{---------------------------------------------------------------------------}
-
         ErrorCodeInvalidDeviceDriver := DeviceDriver.ErrorCode;
 
-(*  Now we'll get the manufacturer's name. *)
+(*  Now we'll get the Device name. *)
 
         FillChar (RoutineDeviceDriver, SizeOf(RoutineDeviceDriver), chr(32));
 		
@@ -219,14 +210,22 @@ if Dev = 2 then
 		FillChar(TempShortString,   SizeOf (TempShortString),   chr(32));
 
 		i := 0;
+
+		k := ord(RoutineDeviceDriver.Information[i]);
 		
-		while (RoutineDeviceDriver.Information[i] <> 32) do
+		while (k > 32) AND (k < 127) do
 		begin
-			TempShortString[i + 1] := chr(RoutineDeviceDriver.Information[i]);
+			TempShortString[i + 1] := chr(k);
 			i := i + 1;
+			k := ord(RoutineDeviceDriver.Information[i]);
 		end;
 		
-		Devices[Dev].DeviceName := TempShortString;
+		k := 0;
+		
+		if TempShortString <> '' then
+			Devices[Dev].DeviceName := TempShortString
+		else
+			Devices[Dev].DeviceName := 'Generic';
 
 		Str(Dev, TempString);
 
@@ -237,7 +236,7 @@ if Dev = 2 then
 
 writeln ('--------------------------=[GetInfoAboutDevices]=--------------------------');
 
-				writeln (' Device: ', Dev, ' Manufacturer Name: ', DeviceName, ' Error code: ', DeviceDriver.ErrorCode);
+				writeln (' Device: ', Dev, ' Device Name: ', DeviceName, ' Error code: ', DeviceDriver.ErrorCode);
 				writeln (' Driver Slot: ', DeviceDriver.DriverSlot, ' Driver Segment: ', DeviceDriver.DriverSegment);
 				if DeviceDriver.DeviceOrDrive = 0 then
 					writeln (' Device Type: Drive.')
@@ -621,8 +620,8 @@ begin
         
         with Devices[i] do
         begin
-			DriverSlot := Slot;
-			DriverSubSlot := SubSlot;
+			DriverSlot 		:= Slot;
+			DriverSubSlot 	:= SubSlot;
         end;
         
     end;
@@ -631,17 +630,17 @@ begin
     
 (*  There is a data structure which will guide all the discovery process. *)
 
-    Dev := 0;
+    Dev := 1;
 
     while (ErrorCodeInvalidDeviceDriver <> ctIDRVR) do
     begin
         FillChar (DeviceDriver, SizeOf(DeviceDriver), 0);
         ErrorCodeInvalidDeviceDriver := 0;
-        Dev := Dev + 1;
         GetInfoAboutDevices (Dev, ErrorCodeInvalidDeviceDriver);
+        Dev := Dev + 1;
     end;
 
-    TotalDevices := Dev;
+    TotalDevices := Dev - 1;
     Dev := 1;
     Part := 1;
     ErrorCodeInvalidPartition := 0;
@@ -781,7 +780,7 @@ for i := 1 to TotalDevices do
 end;
 *)
 
-procedure PrintInfo;
+procedure PrintInfo80;
 var
     temptext: TShortString;
     temptinytext: TShortString;
@@ -798,30 +797,17 @@ var
 	end;
     
 begin
-
-{-----------------------------------------------------------------------------}
-writeln('TotalDevices: ', TotalDevices);
-
-for i := 1 to TotalDevices do
-    case Devices[i].DeviceType of
-        Drive: writeln(i, ' Drive-based driver. ');
-        Device: writeln(i, ' Device-based driver. ');
-        RAMDisk: writeln(i, ' RAMDisk. ');
-    end;
-
-{-----------------------------------------------------------------------------}
-
 	extendedpartition := false;
-    temptext := 'NAME NEXTOR SLOT:SUB:LUN REMOVABLE SIZE READONLY TYPE LETTER';
-    InsertSpaces (chr(32), temptext, 54, 4);
-    InsertSpaces (chr(32), temptext, 50, 1);
-    InsertSpaces (chr(32), temptext, 40, 3); 
-    InsertSpaces (chr(32), temptext, 35, 1);
-    InsertSpaces (chr(32), temptext, 26, 1);
-    InsertSpaces (chr(32), temptext, 13, 1);
-    InsertSpaces (chr(32), temptext,  6, 6);
+    temptext := 'NAME NEXTOR LUN SLOT:SUB REMOVABLE SIZE READONLY TYPE LETTER';
+    InsertSpaces (chr(32), temptext, 54, 4);  (* LETTER *)
+    InsertSpaces (chr(32), temptext, 50, 1);  (* TYPE *)  
+    InsertSpaces (chr(32), temptext, 40, 3);  (* READONLY *)  
+    InsertSpaces (chr(32), temptext, 35, 1);  (* SIZE *)  
+    InsertSpaces (chr(32), temptext, 26, 1);  (* REMOVABLE *)  
+    InsertSpaces (chr(32), temptext, 13, 1);  (* LUN *)  
+    InsertSpaces (chr(32), temptext,  6, 6);  (* SLOT:SUB *)  
     writeln(temptext);
-    
+
     for i := 1 to TotalDevices do
     begin
         FillChar (temptext, SizeOf (temptext) , chr(32));
@@ -868,20 +854,21 @@ for i := 1 to TotalDevices do
                             temptext    :=  copy (Devices[i].DeviceName, 1, Pos (chr(32), Devices[i].DeviceName));
                             InsertSpaces (chr(32), temptext, length(temptext), 14 - (length(temptext) + 1));
                             temptext 	:=  temptext + '1';
-                            InsertSpaces (chr(32), temptext, length(temptext) + 1, 7);
-
+                            InsertSpaces (chr(32), temptext, length(temptext) + 1, 6);
+                            
+                            Str (Devices[i].LUN, templittletext);
+                            temptext    := temptext + templittletext;
+							InsertSpaces (chr(32), temptext, length(temptext) + 1, 3);
+							
                             Slot        := Devices[i].DriverSlot;
                             Subslot     := Devices[i].DriverSubSlot;
                             Str (Slot, templittletext);
                             temptext    := temptext + templittletext;
-                            InsertSpaces (chr(32), temptext, length(temptext) + 1, 3);
+                            InsertSpaces (chr(32), temptext, length(temptext) + 1, 4);
                             
                             Str (Subslot, templittletext);
                             temptext    := temptext + templittletext;
-                            InsertSpaces (chr(32), temptext, length(temptext) + 1, 3);
-                            
-                            Str (Devices[i].LUN, templittletext);
-                            temptext    := temptext + templittletext;
+
                             InsertSpaces (chr(32), temptext, length(temptext) + 1, 6);
 							temptext 	:= temptext + 'NO'; 
 
@@ -891,8 +878,8 @@ for i := 1 to TotalDevices do
 
 							InsertSpaces (chr(32), temptinytext, 1, 10 - length(temptinytext));
 
-                            templittletext	:= temptinytext + chr(32) + 'Mb';
-                            InsertSpaces (chr(32), templittletext, length(templittletext) + 1, 4);
+                            templittletext	:= temptinytext + 'M';
+                            InsertSpaces (chr(32), templittletext, length(templittletext) + 1, 6);
                             templittletext	:= templittletext + 'NO';
                             InsertSpaces (chr(32), templittletext, length(templittletext) + 1, 5);
                             templittletext	:= templittletext + 'disk';
@@ -926,20 +913,21 @@ for i := 1 to TotalDevices do
 								InsertSpaces (chr(32), temptext, length(temptext) + 1, 6);
 
 								temptext := temptext + '1';
-								InsertSpaces (chr(32), temptext, length(temptext) + 1, 7);
+								InsertSpaces (chr(32), temptext, length(temptext) + 1, 6);
+
+                                Str (Devices[i].LUN, templittletext);
+                                temptext := temptext + templittletext;
+								InsertSpaces (chr(32), temptext, length(temptext) + 1, 3);
 								
                                 Str (Slot, templittletext);
                                 temptext := temptext + templittletext;
-								InsertSpaces (chr(32), temptext, length(temptext) + 1, 3);
+								InsertSpaces (chr(32), temptext, length(temptext) + 1, 4);
 
                                 Str (Subslot, templittletext);
                                 temptext := temptext + templittletext;
-								InsertSpaces (chr(32), temptext, length(temptext) + 1, 3);
-								
-                                Str (Devices[i].LUN, templittletext);
-
-                                temptext := temptext + templittletext;
+							
 								InsertSpaces (chr(32), temptext, length(temptext) + 1, 6);
+
 								temptext := temptext + 'NO';
 
 								FillChar (templittletext, SizeOf(templittletext), chr(32));
@@ -957,14 +945,14 @@ for i := 1 to TotalDevices do
 
 									InsertSpaces (chr(32), temptinytext, 1, 10 - length(temptinytext));
 
-									templittletext := temptinytext + ' Mb';
+									templittletext := temptinytext + 'M';
                                 end
                                 
 (*	It's a extended partition. *)
                                 
                                 else
 									if (Devices[i].Partitions[j].PartitionType = extended) then
-										Delete (templittletext, 1, 23)
+										Delete (templittletext, 1, 25)
 
 (*	There isn't a drive letter associated with the partition. *)
 									
@@ -981,11 +969,11 @@ for i := 1 to TotalDevices do
 										
 										InsertSpaces (chr(32), temptinytext, 1, 4 - length(temptinytext));
 										
-										templittletext := templittletext + temptinytext + chr(32) + 'Mb';
+										templittletext := templittletext + temptinytext + 'M';
 
 									end;
                                 
-									InsertSpaces (chr(32), templittletext, length(templittletext) + 1, 4);
+									InsertSpaces (chr(32), templittletext, length(templittletext) + 1, 6);
 									templittletext := templittletext + 'NO';
 									
 									InsertSpaces (chr(32), templittletext, length(templittletext) + 1, 5);
@@ -1012,47 +1000,35 @@ for i := 1 to TotalDevices do
                         end;
                     
             Drive:      begin
-                            temptext := 'DRIVE';
-                            InsertSpaces (chr(32), temptext, length (temptext) + 1, 8);
-                            temptext := temptext + '0';
-                            InsertSpaces (chr(32), temptext, length (temptext) + 1, 7);
+                            temptext := 'Drive';
+                            InsertSpaces (chr(32), temptext, length (temptext) + 1, 19);
 
                             Slot := ((Devices[i].DriverSlot mod 128) mod 4);
                             Subslot := ((Devices[i].DriverSlot mod 128) div 4);
+                            
                             Str (Slot, templittletext);
                             temptext := temptext + templittletext;
-                            InsertSpaces(chr(32), temptext, length(temptext) + 1, 3); 
+                            InsertSpaces(chr(32), temptext, length(temptext) + 1, 4); 
+                            
                             Str (Subslot, templittletext);
                             temptext := temptext + templittletext;
-                            InsertSpaces(chr(32), temptext, length(temptext) + 1, 9); 
+                            InsertSpaces(chr(32), temptext, length(temptext) + 1, 5);
                             temptext := temptext + 'YES';
                             InsertSpaces(chr(32), temptext, length(temptext) + 1, 7); 
-                            temptext := temptext + '720 Kb'; 
-                            InsertSpaces(chr(32), temptext, length(temptext) + 1, 4); 
+                            temptext := temptext + '720K'; 
+                            InsertSpaces(chr(32), temptext, length(temptext) + 1, 6); 
                             temptext := temptext + 'NO';
                             InsertSpaces(chr(32), temptext, length(temptext) + 1, 5); 
-                            temptext := temptext + 'disk';
+                            temptext := temptext + 'floppy';
                             if Devices[i].DriveAssigned <> chr(32) then
-                                temptext := temptext + chr(32) + chr(32) + Devices[i].DriveAssigned +':';
+                                temptext := temptext + chr(32) + Devices[i].DriveAssigned +':';
                             writeln(temptext);
                         end;
                     
             RAMDisk:    begin
-                            temptext := 'RAMDISK';
-                            InsertSpaces (chr(32), temptext, length (temptext) + 1, 6);
-                            temptext := temptext + '0';
-                            InsertSpaces (chr(32), temptext, length (temptext) + 1, 7);
-                            
-                            Slot 	:= ((Devices[i].DriverSlot mod 128) mod 4);
-                            Subslot := ((Devices[i].DriverSlot mod 128) div 4);
-                            Str (Slot, templittletext);
-                            temptext := temptext + templittletext;
-                            InsertSpaces(chr(32), temptext, length(temptext) + 1, 3); 
-                            Str (Subslot, templittletext);
-                            temptext := temptext + templittletext;
-                            templittletext := chr(32);
-                            InsertSpaces(chr(32), temptext, length(temptext) + 1, 9); 
-                            temptext := temptext + templittletext + 'NO';
+                            temptext := 'Ramdisk';
+                            InsertSpaces(chr(32), temptext, length (temptext) + 1, 29);
+                            temptext := temptext + 'NO';
 
                             if Devices[i].DriveAssigned <> chr(32) then
                             begin
@@ -1062,14 +1038,277 @@ for i := 1 to TotalDevices do
                             
                             else
                                 templittletext := '????';
-                            temptext := temptext + templittletext + chr(32) + 'Kb';
-                            InsertSpaces (chr(32), temptext, length(temptext) + 1, 4);
+                            temptext := temptext + templittletext + 'K';
+                            InsertSpaces (chr(32), temptext, length(temptext) + 1, 6);
                             temptext := temptext + 'NO';
                             InsertSpaces (chr(32), temptext, length(temptext) + 1, 5);
                             temptext := temptext + 'ramdisk';
                             InsertSpaces (chr(32), temptext, length(temptext) + 1, 2);
                             if Devices[i].DriveAssigned <> chr(32) then
                                 temptext := temptext + chr(32) + chr(32) + Devices[i].DriveAssigned +':';
+                            writeln(temptext);
+                        end;
+        end;
+    end;
+end;
+
+procedure PrintInfo40;
+var
+    temptext: TShortString;
+    temptinytext: TShortString;
+    templittletext: TShortString;
+    tempint, Slot, Subslot: TInteger;
+    extendedpartition: Boolean;
+    decrement: byte;
+    tempreal, Aux1, Aux2: real;
+
+	procedure InsertSpaces (Obj: char; var Target: TShortString; Position, HowMany: byte);
+	begin
+		for k := 1 to HowMany do
+			insert (Obj, Target, Position);
+	end;
+    
+begin
+	extendedpartition := false;
+    temptext := 'NAME N:L SL:SB RM SIZE RO TYPE LT';
+    InsertSpaces (chr(32), temptext, 24, 2);  (* RO *)  
+    InsertSpaces (chr(32), temptext,  5, 3);  (* N:L *)  
+    writeln(temptext);
+    
+    for i := 1 to TotalDevices do
+    begin
+        FillChar (temptext, SizeOf (temptext) , chr(32));
+        case Devices[i].DeviceType of
+            Device:     begin
+
+(*  Here we'll get device's size. *)
+
+                            FillChar (RoutineDeviceDriver, SizeOf (RoutineDeviceDriver) , chr(32));
+                            FillChar (RoutineDeviceDriver, SizeOf (RoutineDeviceDriver) , chr(32));
+                            FillChar (temptext, SizeOf (temptext), chr(32));
+                            
+                            with RoutineDeviceDriver do
+                            begin
+                                RoutineAddress := ctLUN_INFO;
+                                DriverSlot := nNextorSlotNumber;
+                                DriverSegment := $FF;
+
+                                Data[0] := 0;   (*F*)
+                                Data[1] := i;   (*A*)
+                                Data[2] := 0;   (*C*)
+                                Data[3] := 1;   (*B*)
+                                Data[4] := 0;   (*E*)
+                                Data[5] := 0;   (*D*)
+                                Data[6] := lo(Addr(Information));   (*L*)
+                                Data[7] := hi(Addr(Information));   (*H*)
+
+                                CallRoutineInDeviceDriver (RoutineDeviceDriver);        
+
+                                j := Information[6];
+                                tempreal := 16777216 * j;
+                                j := Information[5];
+                                tempreal := tempreal + 65536 * j;
+                                j := Information[4];
+                                tempreal := tempreal + 256 * j;
+                                j := Information[3];
+                                tempreal := tempreal + j;
+                                
+                                Devices[i].DeviceSize := tempreal;
+                            end;
+
+(*  First line, with device name, slot and subslot, and more info. *)         
+
+                            temptext    :=  copy (Devices[i].DeviceName, 1, 6);
+                            InsertSpaces (chr(32), temptext, length(temptext) + 1, 2);
+                            temptext 	:=  temptext + '1' + chr(32);
+
+                            Str (Devices[i].LUN, templittletext);
+                            temptext    := temptext + templittletext;
+                            InsertSpaces (chr(32), temptext, length(temptext) + 1, 2);
+                            							
+                            Slot        := Devices[i].DriverSlot;
+                            Subslot     := Devices[i].DriverSubSlot;
+                            Str (Slot, templittletext);
+                            temptext    := temptext + templittletext + chr(32);
+                            
+                            Str (Subslot, templittletext);
+                            temptext    := temptext + templittletext;
+
+                            InsertSpaces (chr(32), temptext, length(temptext) + 1, 2);
+							temptext 	:= temptext + '0' + chr(32); 
+
+							FillChar (templittletext, Sizeof(templittletext), chr(32));
+                            tempreal := Devices[i].DeviceSize / 2048;
+                            Str (tempreal:0:0, temptinytext);
+
+							InsertSpaces (chr(32), temptinytext, 1, 5 - length(temptinytext));
+
+                            templittletext	:= temptinytext + 'M';
+                            InsertSpaces (chr(32), templittletext, length(templittletext) + 1, 2);
+                            templittletext	:= templittletext + '0';
+                            InsertSpaces (chr(32), templittletext, length(templittletext) + 1, 2);
+                            templittletext	:= templittletext + 'disk';
+                            
+                            writeln(temptext + templittletext);
+
+(*  Let's print info about partitions. *)                           
+
+                            j := 1;
+                            while ( j <= Devices[i].NumberOfPartitions ) do
+                            begin
+                                if (Devices[i].Partitions[j].PartitionType <> extended) then
+									temptinytext := '|_p'
+								else
+								begin
+									temptinytext := '|_ext';
+									extendedpartition := true;
+								end;
+
+								if extendedpartition then
+									decrement := 1
+								else
+									decrement := 0;
+									
+								Str (Devices[i].Partitions[j].PartitionNumber - decrement, templittletext);
+								
+								temptext := temptinytext + templittletext;
+				
+								InsertSpaces (chr(32), temptext, length(temptext) + 1, 4);
+
+								if (Devices[i].Partitions[j].PartitionType = extended) then
+									delete (temptext, 6, 2);
+
+								temptext := temptext + '1' + chr(32);
+
+                                Str (Devices[i].LUN, templittletext);
+                                temptext := temptext + templittletext;
+								InsertSpaces (chr(32), temptext, length(temptext) + 1, 2);
+								
+                                Str (Slot, templittletext);
+                                temptext := temptext + templittletext + chr(32);
+
+                                Str (Subslot, templittletext);
+                                temptext := temptext + templittletext;
+							
+								InsertSpaces (chr(32), temptext, length(temptext) + 1, 2);
+
+								temptext := temptext + '0';
+
+								FillChar (templittletext, SizeOf(templittletext), chr(32));
+
+								InsertSpaces (chr(32), templittletext, 1, 3);
+
+                                c := Devices[i].Partitions[j].DriveAssignedToPartition;
+                                if c <> chr(32) then
+
+(*	There is a drive letter associated with the partition. *)
+
+                                begin
+                                    tempreal := (GetDriveSpaceInfo (c, ctGetTotalSpace) / 1024);
+                                    Str (tempreal:0:0, temptinytext);
+
+									InsertSpaces (chr(32), temptinytext, 1, 6 - length(temptinytext));
+
+									templittletext := temptinytext + 'M';
+                                end
+                                
+(*	It's a extended partition. *)
+                                
+                                else
+									if (Devices[i].Partitions[j].PartitionType = extended) then
+										Delete (templittletext, 1, 28)
+
+(*	There isn't a drive letter associated with the partition. *)
+									
+									else
+									begin
+										Delete (templittletext, 1, 33);
+
+										Aux1 := Devices[i].Partitions[j].PartitionSizeMajor;
+										Aux2 := Devices[i].Partitions[j].PartitionSizeMinor;
+										
+										FixBytes (Aux1, Aux2);
+										
+										Str ((SizeBytes (Aux1, Aux2) / 2048):0:0, temptinytext); 
+										
+										InsertSpaces (chr(32), temptinytext, 1, 4 - length(temptinytext));
+										
+										templittletext := templittletext + temptinytext + 'M';
+
+									end;
+                                
+									InsertSpaces (chr(32), templittletext, length(templittletext) + 1, 2);
+									templittletext := templittletext + '0';
+									
+									InsertSpaces (chr(32), templittletext, length(templittletext) + 1, 2);
+                                
+                                case Devices[i].Partitions[j].PartitionType of
+                                    primary :   temptinytext := 'pri' + chr(32) + chr(32);
+                                    extended:   temptinytext := 'ext' + chr(32);
+                                    logical :   begin
+													temptinytext := 'log'  + chr(32) + chr(32);
+													insertSpaces (chr(32), temptext, 1, 2);
+													delete (temptext, 7, 2);
+												end;
+                                end;
+                                templittletext := templittletext + temptinytext;
+                                
+                                if c <> chr(32) then
+									templittletext := templittletext + c +':';
+                                writeln(temptext + templittletext);
+                                
+                                j := j + 1;
+                            end;
+                             
+                            
+                        end;
+                    
+            Drive:      begin
+                            temptext := 'DRIVE';
+                            InsertSpaces (chr(32), temptext, length (temptext) + 1, 8);
+
+                            Slot := ((Devices[i].DriverSlot mod 128) mod 4);
+                            Subslot := ((Devices[i].DriverSlot mod 128) div 4);
+                            
+                            Str (Slot, templittletext);
+                            temptext := temptext + templittletext  + chr(32);
+                            
+                            Str (Subslot, templittletext);
+                            temptext := temptext + templittletext;
+                            InsertSpaces(chr(32), temptext, length(temptext) + 1, 2);
+                            temptext := temptext + '1';
+                            InsertSpaces(chr(32), temptext, length(temptext) + 1, 3); 
+                            temptext := temptext + '720K'; 
+                            InsertSpaces(chr(32), temptext, length(temptext) + 1, 2); 
+                            temptext := temptext + '0';
+                            InsertSpaces(chr(32), temptext, length(temptext) + 1, 2);
+                            temptext := temptext + 'flop';
+                            if Devices[i].DriveAssigned <> chr(32) then
+                                temptext := temptext + chr(32) + chr(32) + Devices[i].DriveAssigned +':';
+                            writeln(temptext);
+                        end;
+                    
+            RAMDisk:    begin
+                            temptext := 'Ramdisk';
+                            InsertSpaces(chr(32), temptext, length (temptext) + 1, 11);
+                            temptext := temptext + '0';
+
+                            if Devices[i].DriveAssigned <> chr(32) then
+                            begin
+                                Str (GetDriveSpaceInfo (chr(72), ctGetTotalSpace):0:0, templittletext);
+								InsertSpaces (chr(32), templittletext, 1, 6 - length(templittletext));
+                            end 
+                            
+                            else
+                                templittletext := '????';
+                            temptext := temptext + templittletext + 'K';
+                            InsertSpaces (chr(32), temptext, length(temptext) + 1, 2);
+                            temptext := temptext + '0';
+                            InsertSpaces (chr(32), temptext, length(temptext) + 1, 2);
+                            temptext := temptext + 'ram';
+                            InsertSpaces (chr(32), temptext, length(temptext) + 1, 2);
+                            if Devices[i].DriveAssigned <> chr(32) then
+                                temptext := temptext + Devices[i].DriveAssigned +':';
                             writeln(temptext);
                         end;
         end;
@@ -1100,7 +1339,10 @@ BEGIN
 {
         PrintInfoAboutPartitions
 }
-        PrintInfo
+        case LINLEN of
+			80: PrintInfo80;
+			40: PrintInfo40;
+		end
 
     else
     begin

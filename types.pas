@@ -27,7 +27,6 @@ Const                   ctMaxPath         = 127; { Maximum path size - MSXDOS2 }
 
                         ctMaxSlots        = 4;    { Max. MSX slots           }
                         ctMaxSecSlots     = 4;    { Max. MSX secondary slots }
-
 (**
   * New types definitions
   *)
@@ -90,3 +89,8 @@ Type TRegs = Record
     0 : ( C,B,E,D,L,H,F,A  : Byte );      { 8bit registers  }
     1 : ( BC,DE,HL,AF      : Integer );   { 16bit registers }
 End;
+
+Var
+	LINL40: Byte Absolute $F3AE; { Width for SCREEN 0 (default 37)         }
+	LINL32: Byte Absolute $F3AF; { Width for SCREEN 1 (default 29)         }
+	LINLEN: Byte Absolute $F3B0; { Width for the current text mode         }

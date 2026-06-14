@@ -1,3 +1,0 @@
-Problemas...
-- A rotina de buscar informação sobre os devices (GetInfoAboutDevices) acaba achando que o 2o device é drive, e não um device. É Provavelmente será necessário trocar a forma de detecção, usando DEV_INFO e LUN_INFO.
-- A rotina de buscar as partições primária e estendida (GetInfoAboutPrimaryAndExtendedPartitionsOnDevice) não pega os setores, e é c/ base nisso q eu descubro se a partição é primária ou estendida. 
